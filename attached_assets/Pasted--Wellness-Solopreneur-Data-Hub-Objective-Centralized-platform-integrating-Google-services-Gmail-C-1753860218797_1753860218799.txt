@@ -1,0 +1,156 @@
+
+Wellness Solopreneur Data Hub
+Objective: Centralized platform integrating Google services (Gmail, Calendar, Drive) via OAuth to transform raw data into actionable insights for relationship management.
+
+Core Features
+Authentication
+
+Google OAuth login
+
+Scope: email, profile, https://www.googleapis.com/auth/gmail.readonly, https://www.googleapis.com/auth/calendar, https://www.googleapis.com/auth/drive.readonly
+
+Data Ingestion Pipeline
+
+Sync with:
+
+Gmail (client emails/threads)
+
+Calendar (appointments, events)
+
+Drive (session notes, intake forms in PDF/DOCX)
+
+Scheduled hourly sync via background workers
+
+Database
+
+PostgreSQL + Prisma ORM
+
+Models: User, Contact, Interaction, Document, Goal
+
+Contact Dashboard
+
+Per-contact card with:
+
+Basic Info: Name/email/phone
+
+AI Insights: Sentiment analysis, engagement trends
+
+Timeline: Chronological interactions (emails, meetings)
+
+Next Steps: Actionable tasks (e.g., "Follow up in 48hrs")
+
+Goal Tracking: Progress bars for wellness milestones
+
+AI Assistant
+
+Voice + text chat (Web Speech API)
+
+Capabilities:
+
+Answer data queries ("Show meetings with Alex last month")
+
+Generate summaries ("Summarize client Jane's progress")
+
+Predictive suggestions ("Suggest next session timing")
+
+UI/UX
+
+Framework: React + Vite
+
+Styling: TailwindCSS with custom themes:
+
+js
+// tailwind.config.js
+theme: {
+  extend: {
+    colors: {
+      light: { bg: '#f0fdfa', text: '#0f766e' }, // teal-50 / teal-700
+      dark: { bg: '#115e59', text: '#ccfbf1' }   // teal-800 / teal-100
+    }
+  }
+}
+Responsive layout with dark/light theme toggle
+
+Technical Implementation
+Backend (Node.js/Express)
+
+prisma
+// schema.prisma
+model User {
+  id           String    @id @default(uuid())
+  googleId     String    @unique
+  accessToken  String
+  refreshToken String
+  contacts     Contact[]
+}
+
+model Contact {
+  id          String     @id @default(uuid())
+  name        String
+  email       String
+  lastContact DateTime?
+  interactions Interaction[]
+  goals       Goal[]
+}
+
+model Interaction {
+  id        String   @id @default(uuid())
+  type      String   // "email", "meeting", "note"
+  content   String
+  timestamp DateTime
+  contact   Contact @relation(fields: [contactId], references: [id])
+}
+// Add Goal, Document models
+Data Flow:
+Google APIs → Express Routes (REST) → Prisma → PostgreSQL → React
+
+AI Integration
+
+Use embeddings (OpenAI text-embedding-ada-002) for semantic search
+
+GPT-4-turbo for chat assistant
+
+Dependencies
+json
+// package.json
+"dependencies": {
+  "@prisma/client": "^5.0",
+  "googleapis": "^120.0",
+  "openai": "^4.0",
+  "react-speech-recognition": "^3.10",
+  "tailwindcss": "^3.3"
+}
+Execution Steps
+Auth Setup: Implement Google OAuth with Passport.js
+
+DB Initialization: Run prisma generate + migrate
+
+Sync Workers:
+
+Calendar: Fetch events using google.calendar.events.list
+
+Drive: Parse text from PDF/DOCX via text extraction APIs
+
+UI Components:
+
+ContactCard.jsx (with tabbed sections)
+
+AssistantChat.jsx (voice input toggle)
+
+Theme System: Wrap app in ThemeProvider with context
+
+Constraints & Optimization
+Data Scale: Index DB fields (Prisma @@index) for 600+ contacts
+
+Security: Encrypt tokens at rest, rate-limit APIs
+
+Performance: Virtualize contact lists via react-window
+
+Example Query
+js
+// Fetch contact timeline
+prisma.interaction.findMany({
+  where: { contactId: "abc123" },
+  orderBy: { timestamp: "desc" }
+})
+This prompt provides clear technical direction while allowing flexibility for implementation. Prioritize OAuth flow and data sync first, then build UI components.
