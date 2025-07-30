@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(180, 100%, 98%);
+  --foreground: hsl(173, 80%, 23%);
+  --muted: hsl(174, 100%, 95%);
+  --muted-foreground: hsl(173, 25%, 45%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(173, 80%, 23%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(173, 80%, 23%);
+  --border: hsl(174, 50%, 90%);
+  --input: hsl(174, 50%, 90%);
+  --primary: hsl(173, 80%, 40%);
+  --primary-foreground: hsl(174, 100%, 99%);
+  --secondary: hsl(174, 100%, 95%);
+  --secondary-foreground: hsl(173, 25%, 10%);
+  --accent: hsl(174, 100%, 95%);
+  --accent-foreground: hsl(173, 25%, 10%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(60, 9%, 98%);
+  --ring: hsl(173, 80%, 23%);
+  --radius: 0.5rem;
+
+  /* Custom teal theme variables */
+  --teal-50: hsl(166, 76%, 97%);
+  --teal-100: hsl(167, 85%, 89%);
+  --teal-200: hsl(168, 84%, 78%);
+  --teal-300: hsl(171, 77%, 64%);
+  --teal-400: hsl(172, 66%, 50%);
+  --teal-500: hsl(173, 80%, 40%);
+  --teal-600: hsl(175, 84%, 32%);
+  --teal-700: hsl(175, 77%, 26%);
+  --teal-800: hsl(176, 69%, 22%);
+  --teal-900: hsl(176, 61%, 19%);
+}
+
+.dark {
+  --background: hsl(176, 69%, 22%);
+  --foreground: hsl(167, 85%, 89%);
+  --muted: hsl(176, 61%, 19%);
+  --muted-foreground: hsl(174, 25%, 65%);
+  --popover: hsl(176, 69%, 22%);
+  --popover-foreground: hsl(167, 85%, 89%);
+  --card: hsl(175, 77%, 26%);
+  --card-foreground: hsl(167, 85%, 89%);
+  --border: hsl(175, 84%, 32%);
+  --input: hsl(175, 84%, 32%);
+  --primary: hsl(173, 80%, 40%);
+  --primary-foreground: hsl(174, 100%, 99%);
+  --secondary: hsl(176, 61%, 19%);
+  --secondary-foreground: hsl(167, 85%, 89%);
+  --accent: hsl(176, 61%, 19%);
+  --accent-foreground: hsl(167, 85%, 89%);
+  --destructive: hsl(0, 63%, 31%);
+  --destructive-foreground: hsl(167, 85%, 89%);
+  --ring: hsl(174, 25%, 84%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .text-teal-50 { color: var(--teal-50); }
+  .text-teal-100 { color: var(--teal-100); }
+  .text-teal-200 { color: var(--teal-200); }
+  .text-teal-300 { color: var(--teal-300); }
+  .text-teal-400 { color: var(--teal-400); }
+  .text-teal-500 { color: var(--teal-500); }
+  .text-teal-600 { color: var(--teal-600); }
+  .text-teal-700 { color: var(--teal-700); }
+  .text-teal-800 { color: var(--teal-800); }
+  .text-teal-900 { color: var(--teal-900); }
+
+  .bg-teal-50 { background-color: var(--teal-50); }
+  .bg-teal-100 { background-color: var(--teal-100); }
+  .bg-teal-200 { background-color: var(--teal-200); }
+  .bg-teal-300 { background-color: var(--teal-300); }
+  .bg-teal-400 { background-color: var(--teal-400); }
+  .bg-teal-500 { background-color: var(--teal-500); }
+  .bg-teal-600 { background-color: var(--teal-600); }
+  .bg-teal-700 { background-color: var(--teal-700); }
+  .bg-teal-800 { background-color: var(--teal-800); }
+  .bg-teal-900 { background-color: var(--teal-900); }
+
+  .border-teal-50 { border-color: var(--teal-50); }
+  .border-teal-100 { border-color: var(--teal-100); }
+  .border-teal-200 { border-color: var(--teal-200); }
+  .border-teal-300 { border-color: var(--teal-300); }
+  .border-teal-400 { border-color: var(--teal-400); }
+  .border-teal-500 { border-color: var(--teal-500); }
+  .border-teal-600 { border-color: var(--teal-600); }
+  .border-teal-700 { border-color: var(--teal-700); }
+  .border-teal-800 { border-color: var(--teal-800); }
+  .border-teal-900 { border-color: var(--teal-900); }
+
+  @keyframes voice-pulse {
+    0%, 100% { 
+      transform: scale(1); 
+      opacity: 1; 
+    }
+    50% { 
+      transform: scale(1.1); 
+      opacity: 0.8; 
+    }
+  }
+
+  .animate-voice-active {
+    animation: voice-pulse 1.5s ease-in-out infinite;
+  }
+}
