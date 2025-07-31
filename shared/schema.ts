@@ -1,7 +1,19 @@
 import { sql, relations } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, jsonb, boolean, uuid, pgEnum, index } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
+
+// Enums
+export const lifecycleStageEnum = pgEnum('lifecycle_stage', [
+  'discovery',
+  'curious', 
+  'new_client',
+  'core_client',
+  'ambassador',
+  'needs_reconnecting',
+  'inactive',
+  'collaborator'
+]);
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -26,6 +38,10 @@ export const contacts = pgTable("contacts", {
   engagementTrend: text("engagement_trend").default("stable"), // improving, stable, declining
   status: text("status").default("active"), // active, inactive, archived
   notes: text("notes"),
+  lifecycleStage: lifecycleStageEnum("lifecycle_stage").default('discovery'),
+  extractedFields: jsonb("extracted_fields"),
+  revenueData: jsonb("revenue_data"),
+  referralCount: integer("referral_count").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -101,6 +117,33 @@ export const calendarEvents = pgTable("calendar_events", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// Additional Tables
+export const aiActions = pgTable("ai_actions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: uuid("contact_id").references(() => contacts.id).notNull(),
+  actionType: text("action_type").notNull(),
+  status: text("status").default("pending"), // pending, approved, rejected
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewed_at"),
+});
+
+export const voiceNotes = pgTable("voice_notes", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: uuid("contact_id").references(() => contacts.id).notNull(),
+  noteUrl: text("note_url").notNull(),
+  transcription: text("transcription"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const contactGroups = pgTable("contact_groups", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   contacts: many(contacts),
@@ -116,6 +159,8 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
   interactions: many(interactions),
   goals: many(goals),
   documents: many(documents),
+  aiActions: many(aiActions),
+  voiceNotes: many(voiceNotes),
 }));
 
 export const interactionsRelations = relations(interactions, ({ one }) => ({
@@ -153,6 +198,20 @@ export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
   }),
   contact: one(contacts, {
     fields: [calendarEvents.contactId],
+    references: [contacts.id],
+  }),
+}));
+
+export const aiActionsRelations = relations(aiActions, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [aiActions.contactId],
+    references: [contacts.id],
+  }),
+}));
+
+export const voiceNotesRelations = relations(voiceNotes, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [voiceNotes.contactId],
     references: [contacts.id],
   }),
 }));
@@ -196,6 +255,23 @@ export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit
   updatedAt: true,
 });
 
+export const insertAiActionSchema = createInsertSchema(aiActions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVoiceNoteSchema = createInsertSchema(voiceNotes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertContactGroupSchema = createInsertSchema(contactGroups).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -211,3 +287,9 @@ export type SyncStatus = typeof syncStatus.$inferSelect;
 export type InsertSyncStatus = z.infer<typeof insertSyncStatusSchema>;
 export type CalendarEvent = typeof calendarEvents.$inferSelect;
 export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
+export type AiAction = typeof aiActions.$inferSelect;
+export type InsertAiAction = z.infer<typeof insertAiActionSchema>;
+export type VoiceNote = typeof voiceNotes.$inferSelect;
+export type InsertVoiceNote = z.infer<typeof insertVoiceNoteSchema>;
+export type ContactGroup = typeof contactGroups.$inferSelect;
+export type InsertContactGroup = z.infer<typeof insertContactGroupSchema>;

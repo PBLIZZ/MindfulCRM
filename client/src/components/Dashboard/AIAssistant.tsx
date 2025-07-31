@@ -159,7 +159,7 @@ export default function AIAssistant() {
                 }`}
               >
                 {!message.isUser && (
-                  <div className="w-8 h-8 bg-teal-100 dark:bg-teal-800 rounded-full flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-teal-100 dark:bg-teal-800 rounded-full flex items-center justify-center shrink-0">
                     <Bot className="h-4 w-4 text-teal-600 dark:text-teal-300" />
                   </div>
                 )}
@@ -181,7 +181,7 @@ export default function AIAssistant() {
                   <img
                     src={user?.picture || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"}
                     alt={user?.name || "User"}
-                    className="w-8 h-8 rounded-full flex-shrink-0"
+                    className="w-8 h-8 rounded-full shrink-0"
                   />
                 )}
               </div>
@@ -189,7 +189,7 @@ export default function AIAssistant() {
             
             {chatMutation.isPending && (
               <div className="flex items-start space-x-3">
-                <div className="w-8 h-8 bg-teal-100 dark:bg-teal-800 rounded-full flex items-center justify-center flex-shrink-0">
+                <div className="w-8 h-8 bg-teal-100 dark:bg-teal-800 rounded-full flex items-center justify-center shrink-0">
                   <Bot className="h-4 w-4 text-teal-600 dark:text-teal-300" />
                 </div>
                 <div className="bg-muted rounded-lg p-3">
@@ -304,7 +304,7 @@ export default function AIAssistant() {
                       </div>
                       {event.calendarColor && (
                         <div 
-                          className="w-3 h-3 rounded-full flex-shrink-0" 
+                          className="w-3 h-3 rounded-full shrink-0" 
                           style={{ backgroundColor: event.calendarColor }}
                         />
                       )}

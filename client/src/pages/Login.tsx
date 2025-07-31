@@ -24,8 +24,8 @@ export default function Login() {
   }
 
   return (
-    <div className='min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900 dark:to-teal-800'>
-      <Card className='bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600w-full max-w-md mx-4 shadow-xl'>
+    <div className='min-h-screen flex items-center justify-center bg-linear-to-br from-teal-50 to-teal-100 dark:from-teal-900 dark:to-teal-800'>
+      <Card className='bg-linear-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600w-full max-w-md mx-4 shadow-xl'>
         <CardHeader className='space-y-4 text-center'>
           <div className='flex justify-center'>
             <img src={logoPath} alt='Wellness Hub Logo' className='w-16 h-16 rounded-lg' />

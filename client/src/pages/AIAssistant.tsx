@@ -299,7 +299,7 @@ export default function AIAssistant() {
       </div>
 
       {/* Insights Sidebar */}
-      <div className="w-full lg:w-80 lg:flex-shrink-0 lg:max-h-full">
+      <div className="w-full lg:w-80 lg:shrink-0 lg:max-h-full">
         <Card className="lg:h-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
