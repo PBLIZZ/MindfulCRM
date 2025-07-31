@@ -11,15 +11,15 @@ export class SyncService {
     this.isRunning = true;
     console.log('Starting sync service...');
 
-    // Run sync every hour
-    cron.schedule('0 * * * *', async () => {
+    // Run sync at 8am, 4pm, and midnight
+    cron.schedule('0 8,16,0 * * *', async () => {
       await this.performSync();
     });
 
-    // Initial sync after 1 minute
-    setTimeout(() => {
-      this.performSync();
-    }, 60000);
+    // Initial sync after 1 minute - DISABLED for dev, uncomment for production
+    // setTimeout(() => {
+    //   this.performSync();
+    // }, 60000);
   }
 
   stop(): void {

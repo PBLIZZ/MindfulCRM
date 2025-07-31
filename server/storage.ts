@@ -36,7 +36,7 @@ export interface IStorage {
   getContact(id: string): Promise<Contact | undefined>;
   createContact(contact: InsertContact): Promise<Contact>;
   updateContact(id: string, updates: Partial<InsertContact>): Promise<Contact>;
-  deleteContact(id: string): Promise<void>;
+  deleteContact(id: string): Promise<boolean>;
 
   // Interactions
   getInteractionsByContactId(contactId: string): Promise<Interaction[]>;
@@ -143,8 +143,14 @@ export class DatabaseStorage implements IStorage {
     return contact;
   }
 
-  async deleteContact(id: string): Promise<void> {
-    await db.delete(contacts).where(eq(contacts.id, id));
+  async deleteContact(id: string): Promise<boolean> {
+    try {
+      await db.delete(contacts).where(eq(contacts.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting contact:', error);
+      return false;
+    }
   }
 
   async getInteractionsByContactId(contactId: string): Promise<Interaction[]> {

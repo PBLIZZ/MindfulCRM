@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Filter, Mail, Phone, Calendar, MessageSquare } from 'lucide-react';
+import { Plus, Search, Filter, Mail, Phone, Calendar, MessageSquare, Upload, Sparkles, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,24 +15,123 @@ import {
 } from '@/components/ui/dropdown-menu';
 import AddContactDialog from '@/components/Contact/AddContactDialog';
 import ContactDetail from '@/components/Contact/ContactDetail';
+import { ContactsTable } from '@/components/Contact/ContactsTable';
+import { ContactPhotoUpload } from '@/components/Contact/ContactPhotoUpload';
+import { AIPhotoReview } from '@/components/Contact/AIPhotoReview';
+import { DeleteContactDialog } from '@/components/Contact/DeleteContactDialog';
+import { useToast } from '@/hooks/use-toast';
+import type { Contact } from '@/components/Contact/ContactsTable';
 
 export default function Contacts() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [photoUploadContact, setPhotoUploadContact] = useState<Contact | null>(null);
+  const [aiPhotoReviewContact, setAiPhotoReviewContact] = useState<Contact | null>(null);
+  const [deleteContact, setDeleteContact] = useState<Contact | null>(null);
+  const { toast } = useToast();
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ['/api/contacts'],
-  }) as { data: any[]; isLoading: boolean };
+  }) as { data: Contact[]; isLoading: boolean };
+
+  const handleBulkAction = async (action: string, contactIds: string[]) => {
+    switch (action) {
+      case 'export':
+        await handleExportSelected(contactIds);
+        break;
+      case 'delete':
+        // TODO: Implement bulk delete with confirmation
+        console.log('Bulk delete:', contactIds);
+        toast({
+          title: 'Bulk Delete',
+          description: 'Bulk delete functionality coming soon.',
+        });
+        break;
+      default:
+        console.log('Unknown bulk action:', action);
+    }
+  };
+
+  const handleExportData = async (format: string) => {
+    try {
+      const response = await fetch(`/api/contacts/export?format=${format}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `contacts.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast({
+          title: 'Export successful',
+          description: `Contacts exported as ${format.toUpperCase()}.`,
+        });
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: 'Failed to export contacts. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleExportSelected = async (contactIds: string[]) => {
+    try {
+      const response = await fetch('/api/contacts/export-selected', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ contactIds, format: 'json' })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `selected-contacts.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        toast({
+          title: 'Export successful',
+          description: `${contactIds.length} contacts exported.`,
+        });
+      } else {
+        throw new Error('Export failed');
+      }
+    } catch (error) {
+      toast({
+        title: 'Export failed',
+        description: 'Failed to export selected contacts.',
+        variant: 'destructive'
+      });
+    }
+  };
 
   const filteredContacts =
     contacts?.filter((contact: any) => {
       const matchesSearch =
         contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         contact.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesFilter = filterStatus === 'all' || contact.status === filterStatus;
-      return matchesSearch && matchesFilter;
+      return matchesSearch;
     }) || [];
 
   const getStatusColor = (status: string) => {
@@ -83,10 +183,37 @@ export default function Contacts() {
             Manage your client relationships and interactions
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)} className='flex items-center gap-2'>
-          <Plus className='h-4 w-4' />
-          Add Contact
-        </Button>
+        <div className="flex items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className='flex items-center gap-2'>
+                <Sparkles className='h-4 w-4' />
+                AI Tools
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={() => {
+                // TODO: Batch AI photo enrichment
+                toast({
+                  title: 'AI Photo Enrichment',
+                  description: 'Batch photo enrichment coming soon.',
+                });
+              }}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Enrich All Photos
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExportData('json')}>
+                <Download className="mr-2 h-4 w-4" />
+                Export All Data
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
+          <Button onClick={() => setShowAddDialog(true)} className='flex items-center gap-2'>
+            <Plus className='h-4 w-4' />
+            Add Contact
+          </Button>
+        </div>
       </div>
 
       <div className='flex flex-col sm:flex-row gap-4'>
@@ -99,26 +226,6 @@ export default function Contacts() {
               className='pl-10'
             />
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant='outline' className='flex items-center gap-2'>
-                <Filter className='h-4 w-4' />
-                Filter: {filterStatus === 'all' ? 'All' : filterStatus}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setFilterStatus('all')}>
-                All Contacts
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterStatus('active')}>Active</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterStatus('inactive')}>
-                Inactive
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterStatus('potential')}>
-                Potential
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
       </div>
 
       {isLoading ? (
@@ -145,7 +252,7 @@ export default function Contacts() {
         <Card className='text-center py-12'>
             <CardContent>
               <div className='text-muted-foreground mb-4'>
-                {searchTerm || filterStatus !== 'all' ? (
+                {searchTerm ? (
                   <>No contacts found matching your criteria.</>
                 ) : (
                   <>You haven't added any contacts yet.</>
@@ -158,65 +265,109 @@ export default function Contacts() {
             </CardContent>
         </Card>
       ) : (
-        <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-            {filteredContacts.map((contact: any) => (
-              <Card
-                key={contact.id}
-                className='cursor-pointer hover:shadow-md transition-shadow'
-                onClick={() => setSelectedContactId(contact.id.toString())}
-              >
-                <CardHeader className='flex flex-row items-center space-y-0 pb-2'>
-                  <Avatar className='h-10 w-10'>
-                    <AvatarImage src={contact.avatar} alt={contact.name} />
-                    <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className='ml-3 space-y-1 flex-1'>
-                    <CardTitle className='text-sm font-medium'>{contact.name}</CardTitle>
-                    <div className='flex items-center gap-2'>
-                      <Badge variant='secondary' className={getStatusColor(contact.status)}>
-                        {contact.status}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className='space-y-2 text-sm text-muted-foreground'>
-                    {contact.email && (
+        <Tabs defaultValue='table'>
+          <TabsList>
+            <TabsTrigger value='table'>Table View</TabsTrigger>
+            <TabsTrigger value='cards'>Card View</TabsTrigger>
+          </TabsList>
+          <TabsContent value='table'>
+            <ContactsTable 
+              contacts={filteredContacts} 
+              onSelectContact={setSelectedContactId}
+              onEditContact={(contact) => {
+                // TODO: Open edit dialog
+                console.log('Edit contact:', contact);
+              }}
+              onDeleteContact={setDeleteContact}
+              onBulkAction={handleBulkAction}
+              onExportData={handleExportData}
+            />
+          </TabsContent>
+          <TabsContent value='cards'>
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+              {filteredContacts.map((contact: any) => (
+                <Card
+                  key={contact.id}
+                  className='cursor-pointer hover:shadow-md transition-shadow'
+                  onClick={() => setSelectedContactId(contact.id.toString())}
+                >
+                  <CardHeader className='flex flex-row items-center space-y-0 pb-2'>
+                    <Avatar className='h-10 w-10'>
+                      <AvatarImage src={contact.avatar} alt={contact.name} />
+                      <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
+                    </Avatar>
+                    <div className='ml-3 space-y-1 flex-1'>
+                      <CardTitle className='text-sm font-medium'>{contact.name}</CardTitle>
                       <div className='flex items-center gap-2'>
-                        <Mail className='h-3 w-3' />
-                        <span className='truncate'>{contact.email}</span>
-                      </div>
-                    )}
-                    {contact.phone && (
-                      <div className='flex items-center gap-2'>
-                        <Phone className='h-3 w-3' />
-                        <span>{contact.phone}</span>
-                      </div>
-                    )}
-                    <div className='flex items-center justify-between text-xs pt-2'>
-                      <div className='flex items-center gap-4'>
-                        {contact.lastInteraction && (
-                          <div className='flex items-center gap-1'>
-                            <MessageSquare className='h-3 w-3' />
-                            <span>{new Date(contact.lastInteraction).toLocaleDateString()}</span>
-                          </div>
-                        )}
-                        {contact.nextAppointment && (
-                          <div className='flex items-center gap-1'>
-                            <Calendar className='h-3 w-3' />
-                            <span>{new Date(contact.nextAppointment).toLocaleDateString()}</span>
-                          </div>
-                        )}
+                        <Badge variant='secondary' className={getStatusColor(contact.status)}>
+                          {contact.status}
+                        </Badge>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-        </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className='space-y-2 text-sm text-muted-foreground'>
+                      {contact.email && (
+                        <div className='flex items-center gap-2'>
+                          <Mail className='h-3 w-3' />
+                          <span className='truncate'>{contact.email}</span>
+                        </div>
+                      )}
+                      {contact.phone && (
+                        <div className='flex items-center gap-2'>
+                          <Phone className='h-3 w-3' />
+                          <span>{contact.phone}</span>
+                        </div>
+                      )}
+                      <div className='flex items-center justify-between text-xs pt-2'>
+                        <div className='flex items-center gap-4'>
+                          {contact.lastInteraction && (
+                            <div className='flex items-center gap-1'>
+                              <MessageSquare className='h-3 w-3' />
+                              <span>{new Date(contact.lastInteraction).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                          {contact.nextAppointment && (
+                            <div className='flex items-center gap-1'>
+                              <Calendar className='h-3 w-3' />
+                              <span>{new Date(contact.nextAppointment).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       )}
 
       <AddContactDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
+      
+      {/* Photo Upload Dialog */}
+      <ContactPhotoUpload
+        contactId={photoUploadContact?.id || ''}
+        contactName={photoUploadContact?.name || ''}
+        currentPhotoUrl={photoUploadContact?.avatarUrl}
+        open={!!photoUploadContact}
+        onOpenChange={(open) => !open && setPhotoUploadContact(null)}
+      />
+      
+      {/* AI Photo Review Dialog */}
+      <AIPhotoReview
+        contact={aiPhotoReviewContact}
+        open={!!aiPhotoReviewContact}
+        onOpenChange={(open) => !open && setAiPhotoReviewContact(null)}
+      />
+      
+      {/* Delete Contact Dialog */}
+      <DeleteContactDialog
+        contact={deleteContact}
+        open={!!deleteContact}
+        onOpenChange={(open) => !open && setDeleteContact(null)}
+      />
     </div>
   );
 }

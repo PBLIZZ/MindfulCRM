@@ -126,6 +126,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete('/api/contacts/:id', requireAuth, async (req, res) => {
+    try {
+      const success = await storage.deleteContact(req.params.id);
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: 'Contact not found' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete contact' });
+    }
+  });
+
+  app.get('/api/contacts/:id/cascade-info', requireAuth, async (req, res) => {
+    try {
+      const contactId = req.params.id;
+      const [interactions, goals, documents, voiceNotes, photos, calendarEvents] = await Promise.all([
+        storage.getInteractionsByContactId(contactId),
+        storage.getGoalsByContactId(contactId),
+        storage.getDocumentsByContactId(contactId),
+        [], // Voice notes - TODO: implement if needed
+        [], // Photos - TODO: implement
+        storage.getCalendarEventsByContactId(contactId),
+      ]);
+
+      res.json({
+        interactions: interactions.length,
+        goals: goals.length,
+        documents: documents.length,
+        voiceNotes: 0,
+        photos: 0,
+        calendarEvents: calendarEvents.length,
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to get cascade info' });
+    }
+  });
+
+  // Photo upload endpoint
+  app.post('/api/contacts/upload-photo', requireAuth, async (req, res) => {
+    try {
+      // TODO: Implement file upload with multer and image processing
+      res.status(501).json({ error: 'Photo upload not yet implemented' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to upload photo' });
+    }
+  });
+
+  // AI photo download endpoint
+  app.post('/api/contacts/ai-photo-download', requireAuth, async (req, res) => {
+    try {
+      // TODO: Implement AI photo download and processing
+      res.status(501).json({ error: 'AI photo download not yet implemented' });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to download photo' });
+    }
+  });
+
+  // Remove contact photo
+  app.delete('/api/contacts/:id/photo', requireAuth, async (req, res) => {
+    try {
+      const success = await storage.updateContact(req.params.id, { avatarUrl: null });
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(404).json({ error: 'Contact not found' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to remove photo' });
+    }
+  });
+
+  // Export contacts
+  app.get('/api/contacts/export', requireAuth, async (req, res) => {
+    try {
+      const user = req.user as any;
+      const format = req.query.format as string || 'json';
+      const contacts = await storage.getContactsByUserId(user.id);
+      
+      if (format === 'json') {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="contacts.json"');
+        res.json(contacts);
+      } else if (format === 'csv') {
+        // TODO: Implement CSV export
+        res.status(501).json({ error: 'CSV export not yet implemented' });
+      } else {
+        res.status(400).json({ error: 'Unsupported format' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to export contacts' });
+    }
+  });
+
+  // Export selected contacts
+  app.post('/api/contacts/export-selected', requireAuth, async (req, res) => {
+    try {
+      const { contactIds, format } = req.body;
+      const contacts = await Promise.all(
+        contactIds.map((id: string) => storage.getContact(id))
+      );
+      const validContacts = contacts.filter(Boolean);
+      
+      if (format === 'json') {
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', 'attachment; filename="selected-contacts.json"');
+        res.json(validContacts);
+      } else {
+        res.status(400).json({ error: 'Unsupported format' });
+      }
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to export selected contacts' });
+    }
+  });
+
   // Recent interactions
   app.get('/api/interactions/recent', requireAuth, async (req, res) => {
     try {

@@ -1,25 +1,25 @@
 @import "tailwindcss";
 
 :root {
-  --background: hsl(180, 100%, 98%);
-  --foreground: hsl(173, 80%, 23%);
-  --muted: hsl(174, 100%, 95%);
-  --muted-foreground: hsl(173, 25%, 45%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(173, 80%, 23%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(173, 80%, 23%);
-  --border: hsl(174, 50%, 90%);
-  --input: hsl(174, 50%, 90%);
-  --primary: hsl(173, 80%, 40%);
-  --primary-foreground: hsl(174, 100%, 99%);
-  --secondary: hsl(174, 100%, 95%);
-  --secondary-foreground: hsl(173, 25%, 10%);
-  --accent: hsl(174, 100%, 95%);
-  --accent-foreground: hsl(173, 25%, 10%);
-  --destructive: hsl(0, 84%, 60%);
-  --destructive-foreground: hsl(60, 9%, 98%);
-  --ring: hsl(173, 80%, 23%);
+  --background: 180 100% 98%;
+  --foreground: 173 80% 23%;
+  --muted: 174 100% 95%;
+  --muted-foreground: 173 25% 45%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 173 80% 23%;
+  --card: 0 0% 100%;
+  --card-foreground: 173 80% 23%;
+  --border: 174 50% 90%;
+  --input: 174 50% 90%;
+  --primary: 173 80% 40%;
+  --primary-foreground: 174 100% 99%;
+  --secondary: 174 100% 95%;
+  --secondary-foreground: 173 25% 10%;
+  --accent: 174 100% 95%;
+  --accent-foreground: 173 25% 10%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 60 9% 98%;
+  --ring: 173 80% 23%;
   --radius: 0.5rem;
 
   /* Custom teal theme variables */
@@ -36,25 +36,25 @@
 }
 
 .dark {
-  --background: hsl(176, 61%, 19%);
-  --foreground: hsl(167, 85%, 89%);
-  --muted: hsl(176, 35%, 12%);
-  --muted-foreground: hsl(174, 100%, 95%);
-  --popover: hsl(176, 45%, 15%);
-  --popover-foreground: hsl(167, 85%, 89%);
-  --card: hsl(175, 40%, 25%);
-  --card-foreground: hsl(167, 85%, 89%);
-  --border: hsl(173, 80%, 40%);
-  --input: hsl(167, 85%, 89%);
-  --primary: hsl(174, 50%, 90%);
-  --primary-foreground: #374151;
-  --secondary: hsl(176, 61%, 19%);
-  --secondary-foreground: hsl(167, 85%, 89%);
-  --accent: hsl(176, 61%, 19%);
-  --accent-foreground: hsl(167, 85%, 89%);
-  --destructive: hsl(0, 63%, 31%);
-  --destructive-foreground: hsl(167, 85%, 89%);
-  --ring: hsl(174, 25%, 84%);
+  --background: 176 61% 19%;
+  --foreground: 167 85% 89%;
+  --muted: 176 35% 12%;
+  --muted-foreground: 174 100% 95%;
+  --popover: 176 45% 15%;
+  --popover-foreground: 167 85% 89%;
+  --card: 175 40% 25%;
+  --card-foreground: 167 85% 89%;
+  --border: 173 80% 40%;
+  --input: 167 85% 89%;
+  --primary: 174 50% 90%;
+  --primary-foreground: 55 6% 25%;
+  --secondary: 176 61% 19%;
+  --secondary-foreground: 167 85% 89%;
+  --accent: 176 61% 19%;
+  --accent-foreground: 167 85% 89%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 167 85% 89%;
+  --ring: 174 25% 84%;
   --radius: 0.5rem;
 }
 
@@ -139,6 +139,57 @@
 @utility animate-voice-active {
   animation: voice-pulse 1.5s ease-in-out infinite;
 }
+
+/* Fix for Tailwind v4 popover and dropdown backgrounds */
+@utility bg-background { background-color: hsl(var(--background)); }
+@utility bg-foreground { background-color: hsl(var(--foreground)); }
+@utility bg-card { background-color: hsl(var(--card)); }
+@utility bg-card-foreground { background-color: hsl(var(--card-foreground)); }
+@utility bg-popover { background-color: hsl(var(--popover)); }
+@utility bg-popover-foreground { background-color: hsl(var(--popover-foreground)); }
+@utility bg-primary { background-color: hsl(var(--primary)); }
+@utility bg-primary-foreground { background-color: hsl(var(--primary-foreground)); }
+@utility bg-secondary { background-color: hsl(var(--secondary)); }
+@utility bg-secondary-foreground { background-color: hsl(var(--secondary-foreground)); }
+@utility bg-muted { background-color: hsl(var(--muted)); }
+@utility bg-muted-foreground { background-color: hsl(var(--muted-foreground)); }
+@utility bg-accent { background-color: hsl(var(--accent)); }
+@utility bg-accent-foreground { background-color: hsl(var(--accent-foreground)); }
+@utility bg-destructive { background-color: hsl(var(--destructive)); }
+@utility bg-destructive-foreground { background-color: hsl(var(--destructive-foreground)); }
+
+/* Text colors */
+@utility text-background { color: hsl(var(--background)); }
+@utility text-foreground { color: hsl(var(--foreground)); }
+@utility text-card { color: hsl(var(--card)); }
+@utility text-card-foreground { color: hsl(var(--card-foreground)); }
+@utility text-popover { color: hsl(var(--popover)); }
+@utility text-popover-foreground { color: hsl(var(--popover-foreground)); }
+@utility text-primary { color: hsl(var(--primary)); }
+@utility text-primary-foreground { color: hsl(var(--primary-foreground)); }
+@utility text-secondary { color: hsl(var(--secondary)); }
+@utility text-secondary-foreground { color: hsl(var(--secondary-foreground)); }
+@utility text-muted { color: hsl(var(--muted)); }
+@utility text-muted-foreground { color: hsl(var(--muted-foreground)); }
+@utility text-accent { color: hsl(var(--accent)); }
+@utility text-accent-foreground { color: hsl(var(--accent-foreground)); }
+@utility text-destructive { color: hsl(var(--destructive)); }
+@utility text-destructive-foreground { color: hsl(var(--destructive-foreground)); }
+
+/* Border colors */
+@utility border-border { border-color: hsl(var(--border)); }
+@utility border-input { border-color: hsl(var(--input)); }
+@utility border-ring { border-color: hsl(var(--ring)); }
+
+/* Sidebar utilities for v4 */
+@utility bg-sidebar { background-color: hsl(var(--sidebar-background)); }
+@utility text-sidebar-foreground { color: hsl(var(--sidebar-foreground)); }
+@utility bg-sidebar-primary { background-color: hsl(var(--sidebar-primary)); }
+@utility text-sidebar-primary-foreground { color: hsl(var(--sidebar-primary-foreground)); }
+@utility bg-sidebar-accent { background-color: hsl(var(--sidebar-accent)); }
+@utility text-sidebar-accent-foreground { color: hsl(var(--sidebar-accent-foreground)); }
+@utility border-sidebar-border { border-color: hsl(var(--sidebar-border)); }
+@utility ring-sidebar-ring { --tw-ring-color: hsl(var(--sidebar-ring)); }
 
 
 

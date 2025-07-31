@@ -37,10 +37,18 @@ const contactSchema = z.object({
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional(),
   status: z.enum(['active', 'inactive', 'potential']),
+  lifecycleStage: z.enum(['discovery', 'curious', 'new_client', 'core_client', 'ambassador', 'needs_reconnecting', 'inactive', 'collaborator']).optional(),
+  sentiment: z.number().min(1).max(5).optional(),
   notes: z.string().optional(),
   healthGoals: z.string().optional(),
   emergencyContact: z.string().optional(),
   preferredContactMethod: z.enum(['email', 'phone', 'text']).optional(),
+  // Dynamic fields that will be stored in extractedFields
+  company: z.string().optional(),
+  jobTitle: z.string().optional(),
+  website: z.string().optional(),
+  linkedinUrl: z.string().optional(),
+  address: z.string().optional(),
 });
 
 type ContactFormData = z.infer<typeof contactSchema>;
@@ -61,10 +69,17 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
       email: '',
       phone: '',
       status: 'potential',
+      lifecycleStage: undefined,
+      sentiment: undefined,
       notes: '',
       healthGoals: '',
       emergencyContact: '',
       preferredContactMethod: 'email',
+      company: '',
+      jobTitle: '',
+      website: '',
+      linkedinUrl: '',
+      address: '',
     },
   });
 
@@ -91,8 +106,27 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
   });
 
   const onSubmit = (data: ContactFormData) => {
-    // Clean up empty strings
-    const cleanData = Object.fromEntries(Object.entries(data).filter(([_, value]) => value !== ''));
+    // Separate standard fields from extracted fields
+    const { company, jobTitle, website, linkedinUrl, address, ...standardFields } = data;
+    
+    // Build extracted fields object
+    const extractedFields: Record<string, any> = {};
+    if (company) extractedFields.company = company;
+    if (jobTitle) extractedFields.jobTitle = jobTitle;
+    if (website) extractedFields.website = website;
+    if (linkedinUrl) extractedFields.linkedinUrl = linkedinUrl;
+    if (address) extractedFields.address = address;
+    
+    // Clean up empty strings from standard fields
+    const cleanData = Object.fromEntries(
+      Object.entries(standardFields).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
+    );
+    
+    // Add extracted fields if not empty
+    if (Object.keys(extractedFields).length > 0) {
+      (cleanData as any).extractedFields = extractedFields;
+    }
+    
     createContact.mutate(cleanData as ContactFormData);
   };
 
@@ -102,8 +136,8 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
         <DialogHeader>
           <DialogTitle>Add New Contact</DialogTitle>
           <DialogDescription>
-            Add a new client or contact to your wellness hub. Fill in as much information as you
-            have available.
+            Add a new client or contact to your CRM. Fill in as much information as you
+            have available. Additional fields will be stored for future reference.
           </DialogDescription>
         </DialogHeader>
 
@@ -178,6 +212,61 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
               />
             </div>
 
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <FormField
+                control={form.control}
+                name='lifecycleStage'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lifecycle Stage</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder='Will be set by LLM analysis' />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value='discovery'>Discovery</SelectItem>
+                        <SelectItem value='curious'>Curious</SelectItem>
+                        <SelectItem value='new_client'>New Client</SelectItem>
+                        <SelectItem value='core_client'>Core Client</SelectItem>
+                        <SelectItem value='ambassador'>Ambassador</SelectItem>
+                        <SelectItem value='needs_reconnecting'>Needs Reconnecting</SelectItem>
+                        <SelectItem value='inactive'>Inactive</SelectItem>
+                        <SelectItem value='collaborator'>Collaborator</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='sentiment'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Sentiment Rating</FormLabel>
+                    <Select onValueChange={(value) => field.onChange(Number(value))} value={field.value ? String(field.value) : undefined}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder='Will be analyzed by LLM' />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value='1'>1 - Very Negative</SelectItem>
+                        <SelectItem value='2'>2 - Negative</SelectItem>
+                        <SelectItem value='3'>3 - Neutral</SelectItem>
+                        <SelectItem value='4'>4 - Positive</SelectItem>
+                        <SelectItem value='5'>5 - Very Positive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name='preferredContactMethod'
@@ -200,6 +289,88 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
                 </FormItem>
               )}
             />
+
+            {/* Professional Information */}
+            <div className='space-y-4'>
+              <h4 className='text-sm font-medium text-muted-foreground'>Professional Information</h4>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormField
+                  control={form.control}
+                  name='company'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company</FormLabel>
+                      <FormControl>
+                        <Input placeholder='Company name' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='jobTitle'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Job Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder='Job title or position' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <FormField
+                  control={form.control}
+                  name='website'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Website</FormLabel>
+                      <FormControl>
+                        <Input placeholder='https://example.com' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name='linkedinUrl'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>LinkedIn URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder='https://linkedin.com/in/username' {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <FormField
+                control={form.control}
+                name='address'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Address</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder='Full address...'
+                        className='min-h-[60px]'
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <FormField
               control={form.control}

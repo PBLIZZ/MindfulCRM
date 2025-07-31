@@ -33,12 +33,13 @@ export const contacts = pgTable("contacts", {
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone"),
+  avatarUrl: text("avatar_url"),
   lastContact: timestamp("last_contact"),
-  sentiment: integer("sentiment").default(3), // 1-5 rating
-  engagementTrend: text("engagement_trend").default("stable"), // improving, stable, declining
+  sentiment: integer("sentiment"), // 1-5 rating
+  engagementTrend: text("engagement_trend"), // improving, stable, declining
   status: text("status").default("active"), // active, inactive, archived
   notes: text("notes"),
-  lifecycleStage: lifecycleStageEnum("lifecycle_stage").default('discovery'),
+  lifecycleStage: lifecycleStageEnum("lifecycle_stage"),
   extractedFields: jsonb("extracted_fields"),
   revenueData: jsonb("revenue_data"),
   referralCount: integer("referral_count").default(0),
@@ -144,6 +145,33 @@ export const contactGroups = pgTable("contact_groups", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const contactPhotos = pgTable("contact_photos", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: uuid("contact_id").references(() => contacts.id).notNull(),
+  fileName: text("file_name").notNull(),
+  filePath: text("file_path").notNull(),
+  fileSize: integer("file_size").notNull(), // Size in bytes
+  mimeType: text("mime_type").notNull(),
+  source: text("source").default("manual").notNull(), // manual, ai_enrichment
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const tags = pgTable("tags", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull().unique(),
+  color: text("color").default("#3b82f6"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const contactTags = pgTable("contact_tags", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  contactId: uuid("contact_id").references(() => contacts.id).notNull(),
+  tagId: uuid("tag_id").references(() => tags.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   contacts: many(contacts),
@@ -161,6 +189,8 @@ export const contactsRelations = relations(contacts, ({ one, many }) => ({
   documents: many(documents),
   aiActions: many(aiActions),
   voiceNotes: many(voiceNotes),
+  photos: many(contactPhotos),
+  contactTags: many(contactTags),
 }));
 
 export const interactionsRelations = relations(interactions, ({ one }) => ({
@@ -213,6 +243,28 @@ export const voiceNotesRelations = relations(voiceNotes, ({ one }) => ({
   contact: one(contacts, {
     fields: [voiceNotes.contactId],
     references: [contacts.id],
+  }),
+}));
+
+export const contactPhotosRelations = relations(contactPhotos, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [contactPhotos.contactId],
+    references: [contacts.id],
+  }),
+}));
+
+export const tagsRelations = relations(tags, ({ many }) => ({
+  contactTags: many(contactTags),
+}));
+
+export const contactTagsRelations = relations(contactTags, ({ one }) => ({
+  contact: one(contacts, {
+    fields: [contactTags.contactId],
+    references: [contacts.id],
+  }),
+  tag: one(tags, {
+    fields: [contactTags.tagId],
+    references: [tags.id],
   }),
 }));
 
@@ -272,6 +324,22 @@ export const insertContactGroupSchema = createInsertSchema(contactGroups).omit({
   createdAt: true,
 });
 
+export const insertContactPhotoSchema = createInsertSchema(contactPhotos).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTagSchema = createInsertSchema(tags).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertContactTagSchema = createInsertSchema(contactTags).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -293,3 +361,9 @@ export type VoiceNote = typeof voiceNotes.$inferSelect;
 export type InsertVoiceNote = z.infer<typeof insertVoiceNoteSchema>;
 export type ContactGroup = typeof contactGroups.$inferSelect;
 export type InsertContactGroup = z.infer<typeof insertContactGroupSchema>;
+export type ContactPhoto = typeof contactPhotos.$inferSelect;
+export type InsertContactPhoto = z.infer<typeof insertContactPhotoSchema>;
+export type Tag = typeof tags.$inferSelect;
+export type InsertTag = z.infer<typeof insertTagSchema>;
+export type ContactTag = typeof contactTags.$inferSelect;
+export type InsertContactTag = z.infer<typeof insertContactTagSchema>;
