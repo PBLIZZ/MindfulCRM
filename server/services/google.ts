@@ -5,8 +5,8 @@ import type { User } from '@shared/schema';
 export class GoogleService {
   private getOAuth2Client(user: User) {
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID || process.env.OAUTH_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET || process.env.OAUTH_CLIENT_SECRET,
+      process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
       process.env.GOOGLE_CALLBACK_URL
     );
 
@@ -97,49 +97,165 @@ export class GoogleService {
       const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
       const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+      const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
 
-      const response = await calendar.events.list({
-        calendarId: 'primary',
-        timeMin: oneWeekAgo.toISOString(),
-        timeMax: now.toISOString(),
-        singleEvents: true,
-        orderBy: 'startTime',
-      });
+      console.log(`Syncing calendar events for user ${user.email} from ${ninetyDaysAgo.toISOString()} to ${ninetyDaysFromNow.toISOString()}`);
 
-      const events = response.data.items || [];
+      // First, get all user's calendars
+      const calendarListResponse = await calendar.calendarList.list();
+      const calendars = calendarListResponse.data.items || [];
+      console.log(`Found ${calendars.length} calendars for user`);
 
-      for (const event of events) {
-        if (!event.attendees || !event.summary) continue;
+      let allEvents: any[] = [];
+      const calendarMetadata: { [key: string]: { name: string; color: string } } = {};
 
-        for (const attendee of event.attendees) {
-          if (!attendee.email || attendee.email === user.email) continue;
+      // Fetch events from each calendar
+      for (const cal of calendars) {
+        if (!cal.id) continue;
+        
+        // Store calendar metadata
+        calendarMetadata[cal.id] = {
+          name: cal.summary || cal.id,
+          color: cal.backgroundColor || cal.colorId || '#4285f4' // Default Google blue
+        };
 
-          // Find or create contact
-          const contacts = await storage.getContactsByUserId(user.id);
-          let contact = contacts.find(c => c.email === attendee.email);
-
-          if (!contact) {
-            contact = await storage.createContact({
-              userId: user.id,
-              name: attendee.displayName || attendee.email,
-              email: attendee.email,
-              lastContact: new Date()
-            });
-          }
-
-          // Create interaction
-          await storage.createInteraction({
-            contactId: contact.id,
-            type: 'meeting',
-            subject: event.summary,
-            content: `Meeting: ${event.summary}${event.description ? ` - ${event.description}` : ''}`,
-            timestamp: event.start?.dateTime ? new Date(event.start.dateTime) : new Date(),
-            source: 'calendar',
-            sourceId: event.id
+        try {
+          const response = await calendar.events.list({
+            calendarId: cal.id,
+            timeMin: ninetyDaysAgo.toISOString(),
+            timeMax: ninetyDaysFromNow.toISOString(),
+            singleEvents: true,
+            orderBy: 'startTime',
+            maxResults: 2500,
           });
+
+          const calendarEvents = (response.data.items || []).map(event => ({
+            ...event,
+            calendarId: cal.id,
+            calendarName: cal.summary || cal.id,
+            calendarColor: cal.backgroundColor || cal.colorId || '#4285f4'
+          }));
+
+          allEvents = allEvents.concat(calendarEvents);
+          console.log(`Found ${calendarEvents.length} events in calendar: ${cal.summary}`);
+        } catch (error) {
+          console.error(`Error fetching events from calendar ${cal.summary}:`, error);
         }
       }
+
+      console.log(`Found ${allEvents.length} total calendar events to process`);
+      const events = allEvents;
+
+      let newEventsCount = 0;
+      let updatedEventsCount = 0;
+
+      for (const event of events) {
+        if (!event.id) continue;
+
+        // Check if we already have this event
+        const existingEvent = await storage.getCalendarEventByGoogleId(user.id, event.id);
+        
+        // Determine meeting type based on event properties
+        let meetingType = 'in-person';
+        if (event.location?.includes('zoom') || event.location?.includes('meet.google.com') || 
+            event.description?.includes('zoom') || event.description?.includes('meet.google.com')) {
+          meetingType = 'video';
+        } else if (event.location?.includes('phone') || event.description?.includes('phone')) {
+          meetingType = 'phone';
+        }
+
+        const eventData = {
+          userId: user.id,
+          googleEventId: event.id,
+          rawData: event, // Store the complete Google Calendar event JSON
+          summary: event.summary || null,
+          description: event.description || null,
+          startTime: event.start?.dateTime ? new Date(event.start.dateTime) : 
+                    event.start?.date ? new Date(event.start.date) : null,
+          endTime: event.end?.dateTime ? new Date(event.end.dateTime) : 
+                  event.end?.date ? new Date(event.end.date) : null,
+          attendees: event.attendees || null,
+          location: event.location || null,
+          meetingType,
+          processed: false, // Will be processed by LLM later
+          extractedData: null,
+          contactId: null, // Will be determined during LLM processing
+          // Calendar metadata
+          calendarId: event.calendarId || null,
+          calendarName: event.calendarName || null,
+          calendarColor: event.calendarColor || null,
+        };
+
+        if (existingEvent) {
+          // Update existing event if the raw data has changed OR if calendar metadata is missing
+          const needsUpdate = JSON.stringify(existingEvent.rawData) !== JSON.stringify(event) ||
+                            !existingEvent.calendarName || !existingEvent.calendarColor;
+          
+          if (needsUpdate) {
+            await storage.updateCalendarEvent(existingEvent.id, {
+              rawData: event,
+              summary: eventData.summary,
+              description: eventData.description,
+              startTime: eventData.startTime,
+              endTime: eventData.endTime,
+              attendees: eventData.attendees,
+              location: eventData.location,
+              meetingType: eventData.meetingType,
+              processed: false, // Re-process if data changed
+              // Add calendar metadata
+              calendarId: eventData.calendarId,
+              calendarName: eventData.calendarName,
+              calendarColor: eventData.calendarColor,
+            });
+            updatedEventsCount++;
+          }
+        } else {
+          // Create new event
+          await storage.createCalendarEvent(eventData);
+          newEventsCount++;
+        }
+
+        // Also create interactions for contacts (existing logic)
+        if (event.attendees && event.summary) {
+          for (const attendee of event.attendees) {
+            if (!attendee.email || attendee.email === user.email) continue;
+
+            // Find or create contact
+            const contacts = await storage.getContactsByUserId(user.id);
+            let contact = contacts.find(c => c.email === attendee.email);
+
+            if (!contact) {
+              contact = await storage.createContact({
+                userId: user.id,
+                name: attendee.displayName || attendee.email,
+                email: attendee.email,
+                lastContact: new Date()
+              });
+            }
+
+            // Create interaction (check for duplicates by sourceId)
+            const existingInteractions = await storage.getInteractionsByContactId(contact.id);
+            const hasExistingInteraction = existingInteractions.some(
+              interaction => interaction.sourceId === event.id
+            );
+
+            if (!hasExistingInteraction) {
+              await storage.createInteraction({
+                contactId: contact.id,
+                type: 'meeting',
+                subject: event.summary,
+                content: `Meeting: ${event.summary}${event.description ? ` - ${event.description}` : ''}`,
+                timestamp: event.start?.dateTime ? new Date(event.start.dateTime) : new Date(),
+                source: 'calendar',
+                sourceId: event.id
+              });
+            }
+          }
+        }
+      }
+
+      console.log(`Calendar sync completed: ${newEventsCount} new events, ${updatedEventsCount} updated events`);
 
       await storage.updateSyncStatus(user.id, 'calendar', {
         lastSync: new Date(),

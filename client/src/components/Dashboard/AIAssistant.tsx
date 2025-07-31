@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
-import { Mic, MicOff, Send, Bot, Calendar, BarChart3, RefreshCw } from "lucide-react";
+import { Mic, MicOff, Send, Bot, Calendar, BarChart3, RefreshCw, Clock, MapPin, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface Message {
@@ -27,6 +27,13 @@ export default function AIAssistant() {
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
+  
+  // Fetch upcoming calendar events
+  const { data: upcomingEvents, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
+    queryKey: ['/api/calendar/upcoming?limit=5'],
+  });
+  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { isListening, startListening, stopListening, transcript } = useVoiceInput();
@@ -62,12 +69,19 @@ export default function AIAssistant() {
   const syncMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest("POST", "/api/sync/manual", {});
-      return response.json();
+      return response;
+    },
+    onSuccess: () => {
+      // Refetch events after sync
+      refetchEvents();
     },
   });
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Only scroll to bottom if there are more than the initial message
+    if (messages.length > 1) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -118,12 +132,6 @@ export default function AIAssistant() {
       description: "Create progress reports for clients",
       icon: BarChart3,
       action: () => setInputMessage("Generate a summary report of client progress this week"),
-    },
-    {
-      title: "Sync Data",
-      description: "Manually trigger Google services sync",
-      icon: RefreshCw,
-      action: () => syncMutation.mutate(),
     },
   ];
 
@@ -254,12 +262,97 @@ export default function AIAssistant() {
       {/* Upcoming Sessions */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg font-semibold">Upcoming Sessions</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg font-semibold">Upcoming Sessions</CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => syncMutation.mutate()}
+              disabled={syncMutation.isPending}
+              className="h-8 px-2"
+            >
+              <RefreshCw className={`h-3 w-3 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+              <span className="ml-1 text-xs">Sync</span>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="text-center py-8 text-muted-foreground">
-            No upcoming sessions found. Sync your Google Calendar to see scheduled appointments.
-          </div>
+          {eventsLoading ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <RefreshCw className="h-4 w-4 animate-spin mx-auto mb-2" />
+              Loading upcoming events...
+            </div>
+          ) : upcomingEvents && Array.isArray(upcomingEvents) && upcomingEvents.length > 0 ? (
+            <div className="space-y-3">
+              {upcomingEvents.map((event: any) => {
+                const startTime = new Date(event.startTime);
+                const endTime = event.endTime ? new Date(event.endTime) : null;
+                const attendees = event.attendees ? (typeof event.attendees === 'string' ? JSON.parse(event.attendees) : event.attendees) : [];
+                
+                return (
+                  <div key={event.id} className="border rounded-lg p-3 space-y-2">
+                    {/* Calendar and Title */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-sm leading-tight">{event.summary || 'Untitled Event'}</h4>
+                        {event.calendarName && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Calendar className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-muted-foreground">{event.calendarName}</span>
+                          </div>
+                        )}
+                      </div>
+                      {event.calendarColor && (
+                        <div 
+                          className="w-3 h-3 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: event.calendarColor }}
+                        />
+                      )}
+                    </div>
+                    
+                    {/* Time */}
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      <span>
+                        {startTime.toLocaleDateString()} at {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {endTime && ` - ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                      </span>
+                    </div>
+                    
+                    {/* Location */}
+                    {event.location && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="h-3 w-3" />
+                        <span className="break-words">{event.location}</span>
+                      </div>
+                    )}
+                    
+                    {/* Description */}
+                    {event.description && (
+                      <div className="text-xs text-muted-foreground">
+                        <p className="break-words line-clamp-2">{event.description}</p>
+                      </div>
+                    )}
+                    
+                    {/* Attendees */}
+                    {attendees.length > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Users className="h-3 w-3" />
+                        <span className="break-words">
+                          {attendees.slice(0, 2).map((attendee: any) => attendee.email || attendee.displayName).join(', ')}
+                          {attendees.length > 2 && ` +${attendees.length - 2} more`}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              No upcoming sessions found. Sync your Google Calendar to see scheduled appointments.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -3,9 +3,9 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { storage } from '../storage';
 import type { User } from '@shared/schema';
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.OAUTH_CLIENT_ID;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || process.env.OAUTH_CLIENT_SECRET;
-const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || `${process.env.REPLIT_DOMAINS?.split(',')[0] || 'http://localhost:5000'}/auth/google/callback`;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
+const CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || `${process.env.REPLIT_DOMAINS?.split(',')[0] || 'http://localhost:8080'}/auth/google/callback`;
 
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   console.warn('Google OAuth credentials not configured. Authentication will not work.');

@@ -77,10 +77,35 @@ export const syncStatus = pgTable("sync_status", {
   error: text("error"),
 });
 
+// Raw Google Calendar events storage
+export const calendarEvents = pgTable("calendar_events", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id").references(() => users.id).notNull(),
+  googleEventId: text("google_event_id").notNull().unique(),
+  rawData: jsonb("raw_data").notNull(), // Full Google Calendar event JSON
+  summary: text("summary"),
+  description: text("description"),
+  startTime: timestamp("start_time"),
+  endTime: timestamp("end_time"),
+  attendees: jsonb("attendees"), // Array of attendee objects
+  location: text("location"),
+  meetingType: text("meeting_type"), // in-person, video, phone
+  processed: boolean("processed").default(false), // Whether LLM has processed this event
+  extractedData: jsonb("extracted_data"), // LLM-extracted insights
+  contactId: uuid("contact_id").references(() => contacts.id), // Associated contact if identified
+  // Calendar metadata
+  calendarId: text("calendar_id"), // Google Calendar ID
+  calendarName: text("calendar_name"), // Calendar display name (e.g., "Personal", "Business")
+  calendarColor: text("calendar_color"), // Calendar color from Google
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   contacts: many(contacts),
   syncStatus: many(syncStatus),
+  calendarEvents: many(calendarEvents),
 }));
 
 export const contactsRelations = relations(contacts, ({ one, many }) => ({
@@ -121,6 +146,17 @@ export const syncStatusRelations = relations(syncStatus, ({ one }) => ({
   }),
 }));
 
+export const calendarEventsRelations = relations(calendarEvents, ({ one }) => ({
+  user: one(users, {
+    fields: [calendarEvents.userId],
+    references: [users.id],
+  }),
+  contact: one(contacts, {
+    fields: [calendarEvents.contactId],
+    references: [contacts.id],
+  }),
+}));
+
 // Schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -154,6 +190,12 @@ export const insertSyncStatusSchema = createInsertSchema(syncStatus).omit({
   id: true,
 });
 
+export const insertCalendarEventSchema = createInsertSchema(calendarEvents).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -167,3 +209,5 @@ export type Document = typeof documents.$inferSelect;
 export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type SyncStatus = typeof syncStatus.$inferSelect;
 export type InsertSyncStatus = z.infer<typeof insertSyncStatusSchema>;
+export type CalendarEvent = typeof calendarEvents.$inferSelect;
+export type InsertCalendarEvent = z.infer<typeof insertCalendarEventSchema>;
