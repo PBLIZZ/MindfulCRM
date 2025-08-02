@@ -19,8 +19,33 @@ import { PhotoEnrichmentService } from './services/photo-enrichment';
 import { taskAI } from './services/task-ai';
 import { taskScheduler } from './services/task-scheduler';
 import { requireAuth, setAuthCookie, clearAuthCookie } from './services/jwt-auth';
+import {
+  generalRateLimit,
+  authRateLimit,
+  apiRateLimit,
+  uploadRateLimit,
+  aiRateLimit,
+  csrfProtection,
+  generateCSRFToken,
+  validatePath,
+  validateContactId,
+  validateContactCreation,
+  validateInteractionCreation,
+  validateEmailSend,
+  handleValidationErrors,
+  securityHeaders,
+  validateFileUpload,
+  safeFileOperation,
+  sanitizeResponse
+} from './services/security';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Security headers
+  app.use(securityHeaders);
+  
+  // General rate limiting
+  app.use(generalRateLimit);
+  
   // Serve static files for uploaded photos
   app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
@@ -48,11 +73,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   syncService.start();
   taskScheduler.start();
 
-  // Auth routes
-  app.get('/auth/google', passport.authenticate('google'));
+  // CSRF token endpoint
+  app.get('/api/csrf-token', generateCSRFToken);
+
+  // Auth routes with rate limiting
+  app.get('/auth/google', authRateLimit, passport.authenticate('google'));
 
   app.get(
     '/auth/google/callback',
+    authRateLimit,
     passport.authenticate('google', { failureRedirect: '/login' }),
     (req, res) => {
       // Set JWT cookie after successful OAuth
@@ -64,17 +93,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   );
 
-  app.post('/api/auth/logout', (req, res) => {
+  app.post('/api/auth/logout', authRateLimit, csrfProtection, (req, res) => {
     clearAuthCookie(res);
     res.json({ success: true });
   });
 
-  app.get('/api/auth/user', requireAuth, (req, res) => {
-    res.json(req.user);
+  app.get('/api/auth/user', apiRateLimit, requireAuth, (req, res) => {
+    res.json(sanitizeResponse(req.user));
   });
 
   // Profile management
-  app.get('/api/profile', requireAuth, async (req, res) => {
+  app.get('/api/profile', apiRateLimit, requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
       const userProfile = await storage.getUserById(user.id);
@@ -90,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/profile/gdpr-consent', requireAuth, async (req, res) => {
+  app.patch('/api/profile/gdpr-consent', apiRateLimit, csrfProtection, requireAuth, async (req, res) => {
     try {
       const user = req.user as any;
       const { allowProfilePictureScraping, gdprConsentDate, gdprConsentVersion } = req.body;
@@ -152,17 +181,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contacts
-  app.get('/api/contacts', requireAuth, async (req, res) => {
+  app.get('/api/contacts', apiRateLimit, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       const contacts = await storage.getContactsByUserId(user.id);
-      res.json(contacts);
+      res.json(sanitizeResponse(contacts));
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch contacts' });
     }
   });
 
-  app.get('/api/contacts/:id', requireAuth, async (req, res) => {
+  app.get('/api/contacts/:id', apiRateLimit, requireAuth, validateContactId, handleValidationErrors, async (req: any, res: any) => {
     try {
       const contact = await storage.getContact(req.params.id);
       if (!contact) {
@@ -175,18 +204,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getDocumentsByContactId(contact.id),
       ]);
 
-      res.json({
+      res.json(sanitizeResponse({
         ...contact,
         interactions,
         goals,
         documents,
-      });
+      }));
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch contact details' });
     }
   });
 
-  app.post('/api/contacts', requireAuth, async (req, res) => {
+  app.post('/api/contacts', apiRateLimit, csrfProtection, requireAuth, validateContactCreation, handleValidationErrors, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       const contactData = { ...req.body, userId: user.id };
@@ -197,7 +226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/contacts/:id', requireAuth, async (req, res) => {
+  app.patch('/api/contacts/:id', apiRateLimit, csrfProtection, requireAuth, validateContactId, handleValidationErrors, async (req: any, res: any) => {
     try {
       const { tags, ...contactData } = req.body;
 
@@ -262,7 +291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete('/api/contacts/:id', requireAuth, async (req, res) => {
+  app.delete('/api/contacts/:id', apiRateLimit, csrfProtection, requireAuth, validateContactId, handleValidationErrors, async (req: any, res: any) => {
     try {
       const success = await storage.deleteContact(req.params.id);
       if (success) {
@@ -322,7 +351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Photo upload endpoint
-  app.post('/api/contacts/upload-photo', requireAuth, upload.single('image'), async (req, res) => {
+  app.post('/api/contacts/upload-photo', uploadRateLimit, csrfProtection, requireAuth, upload.single('image'), validateFileUpload, async (req: any, res: any) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: 'No image file provided' });
@@ -336,14 +365,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify contact exists
       const contact = await storage.getContact(contactId);
       if (!contact) {
-        // Clean up uploaded file
-        fs.unlinkSync(req.file.path);
+        // Clean up uploaded file safely
+        if (safeFileOperation(req.file.path, 'temp/')) {
+          fs.unlinkSync(req.file.path);
+        }
         return res.status(404).json({ error: 'Contact not found' });
       }
 
-      // Generate unique filename
-      const fileName = `${contactId}_${Date.now()}.webp`;
+      // Generate unique filename with safe characters
+      const safeContactId = contactId.replace(/[^a-zA-Z0-9-_]/g, '');
+      const fileName = `${safeContactId}_${Date.now()}.webp`;
       const outputPath = path.join(uploadDir, fileName);
+      
+      // Validate output path is safe
+      if (!safeFileOperation(outputPath, uploadDir)) {
+        if (safeFileOperation(req.file.path, 'temp/')) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ error: 'Invalid file path' });
+      }
 
       // Process image with Sharp: convert to WebP, resize, and optimize
       await sharp(req.file.path)
@@ -354,19 +394,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .webp({ quality: 85 })
         .toFile(outputPath);
 
-      // Clean up temp file
-      fs.unlinkSync(req.file.path);
+      // Clean up temp file safely
+      if (safeFileOperation(req.file.path, 'temp/')) {
+        fs.unlinkSync(req.file.path);
+      }
 
       // Check final file size
       const stats = fs.statSync(outputPath);
       if (stats.size > 250 * 1024) {
         // 250KB
         // Re-process with lower quality if still too large
+        const tempPath = outputPath + '.tmp';
         await sharp(outputPath)
           .webp({ quality: 60 })
-          .toFile(outputPath + '.tmp');
+          .toFile(tempPath);
 
-        fs.renameSync(outputPath + '.tmp', outputPath);
+        if (safeFileOperation(tempPath, uploadDir)) {
+          fs.renameSync(tempPath, outputPath);
+        }
       }
 
       // Create contact photo record
@@ -394,7 +439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Photo upload error:', error);
 
       // Clean up uploaded file if it exists
-      if (req.file && fs.existsSync(req.file.path)) {
+      if (req.file && fs.existsSync(req.file.path) && safeFileOperation(req.file.path, 'temp/')) {
         fs.unlinkSync(req.file.path);
       }
 
@@ -406,7 +451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI photo download endpoint
-  app.post('/api/contacts/ai-photo-download', requireAuth, async (req, res) => {
+  app.post('/api/contacts/ai-photo-download', aiRateLimit, csrfProtection, requireAuth, async (req: any, res: any) => {
     try {
       // TODO: Implement AI photo download and processing
       res.status(501).json({ error: 'AI photo download not yet implemented' });
@@ -416,7 +461,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Remove contact photo
-  app.delete('/api/contacts/:id/photo', requireAuth, async (req, res) => {
+  app.delete('/api/contacts/:id/photo', apiRateLimit, csrfProtection, requireAuth, validateContactId, handleValidationErrors, async (req: any, res: any) => {
     try {
       const success = await storage.updateContact(req.params.id, {
         avatarUrl: null,
@@ -435,11 +480,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const photoEnrichmentService = new PhotoEnrichmentService(storage);
 
   // Batch enrich all contact photos
-  app.post('/api/photo-enrichment/batch', requireAuth, async (req, res) => {
+  app.post('/api/photo-enrichment/batch', aiRateLimit, csrfProtection, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       const results = await photoEnrichmentService.batchEnrichPhotos(user.id);
-      res.json(results);
+      res.json(sanitizeResponse(results));
     } catch (error) {
       console.error('Batch photo enrichment error:', error);
       res.status(500).json({
@@ -450,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Find photo suggestions for a single contact
-  app.get('/api/contacts/:id/photo-suggestions', requireAuth, async (req, res) => {
+  app.get('/api/contacts/:id/photo-suggestions', apiRateLimit, requireAuth, validateContactId, handleValidationErrors, async (req: any, res: any) => {
     try {
       const contact = await storage.getContact(req.params.id);
       if (!contact) {
@@ -485,10 +530,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Enrich a single contact's photo
-  app.post('/api/contacts/:id/enrich-photo', requireAuth, async (req, res) => {
+  app.post('/api/contacts/:id/enrich-photo', aiRateLimit, csrfProtection, requireAuth, validateContactId, handleValidationErrors, async (req: any, res: any) => {
     try {
       const result = await photoEnrichmentService.enrichSingleContact(req.params.id);
-      res.json(result);
+      res.json(sanitizeResponse(result));
     } catch (error) {
       console.error('Single photo enrichment error:', error);
       res.status(500).json({ error: 'Failed to enrich contact photo' });
@@ -496,7 +541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get enrichment stats
-  app.get('/api/photo-enrichment/stats', requireAuth, async (req, res) => {
+  app.get('/api/photo-enrichment/stats', apiRateLimit, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       const contacts = await storage.getContactsByUserId(user.id);
@@ -509,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .length,
       };
 
-      res.json(stats);
+      res.json(sanitizeResponse(stats));
     } catch (error) {
       console.error('Photo enrichment stats error:', error);
       res.status(500).json({ error: 'Failed to fetch enrichment stats' });
@@ -517,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Export contacts
-  app.get('/api/contacts/export', requireAuth, async (req, res) => {
+  app.get('/api/contacts/export', apiRateLimit, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       const format = (req.query.format as string) || 'json';
@@ -558,19 +603,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Recent interactions
-  app.get('/api/interactions/recent', requireAuth, async (req, res) => {
+  app.get('/api/interactions/recent', apiRateLimit, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
-      const limit = parseInt(req.query.limit as string) || 10;
+      const limit = Math.min(parseInt(req.query.limit as string) || 10, 100); // Cap at 100
       const interactions = await storage.getRecentInteractions(user.id, limit);
-      res.json(interactions);
+      res.json(sanitizeResponse(interactions));
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch recent interactions' });
     }
   });
 
   // Create interaction
-  app.post('/api/interactions', requireAuth, async (req, res) => {
+  app.post('/api/interactions', apiRateLimit, csrfProtection, requireAuth, validateInteractionCreation, handleValidationErrors, async (req: any, res: any) => {
     try {
       console.log('Creating interaction with data:', req.body);
       const interactionData = {
@@ -645,17 +690,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // AI Assistant
-  app.post('/api/ai/chat', requireAuth, async (req, res) => {
+  app.post('/api/ai/chat', aiRateLimit, csrfProtection, requireAuth, async (req: any, res: any) => {
     try {
       const { message, context } = req.body;
       const response = await geminiService.generateChatResponse(message, context);
-      res.json({ response });
+      res.json(sanitizeResponse({ response }));
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate AI response' });
     }
   });
 
-  app.post('/api/ai/insights/:contactId', requireAuth, async (req, res) => {
+  app.post('/api/ai/insights/:contactId', aiRateLimit, csrfProtection, requireAuth, validateContactId, handleValidationErrors, async (req: any, res: any) => {
     try {
       const contact = await storage.getContact(req.params.contactId);
       if (!contact) {
@@ -680,12 +725,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sync
-  app.get('/api/sync/status', requireAuth, async (req, res) => {
+  app.get('/api/sync/status', apiRateLimit, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       console.log('Fetching sync status for user:', user.id);
       const syncStatus = await storage.getSyncStatus(user.id);
-      res.json(syncStatus);
+      res.json(sanitizeResponse(syncStatus));
     } catch (error) {
       console.error('Sync status error:', error);
       res.status(500).json({
@@ -695,7 +740,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/sync/manual', requireAuth, async (req, res) => {
+  app.post('/api/sync/manual', apiRateLimit, csrfProtection, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       await syncService.manualSync(user.id);
@@ -1055,30 +1100,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email Data Processing (for AI insights, not email management)
-  app.get('/api/emails/processed', requireAuth, async (req, res) => {
+  app.get('/api/emails/processed', apiRateLimit, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
-      const limit = parseInt(req.query.limit as string) || 50;
+      const limit = Math.min(parseInt(req.query.limit as string) || 50, 200); // Cap at 200
       const emails = await storage.getEmailsByUserId(user.id, limit);
       // Only return processed emails with extracted data
       const processedEmails = emails.filter(email => email.processed && email.extractedData);
-      res.json(processedEmails);
+      res.json(sanitizeResponse(processedEmails));
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch processed emails' });
     }
   });
 
-  app.get('/api/emails/unprocessed', requireAuth, async (req, res) => {
+  app.get('/api/emails/unprocessed', apiRateLimit, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       const emails = await storage.getUnprocessedEmails(user.id);
-      res.json(emails);
+      res.json(sanitizeResponse(emails));
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch unprocessed emails' });
     }
   });
 
-  app.patch('/api/emails/:id/mark-processed', requireAuth, async (req, res) => {
+  app.patch('/api/emails/:id/mark-processed', apiRateLimit, csrfProtection, requireAuth, async (req: any, res: any) => {
     try {
       const { extractedData, relevanceScore, filterReason } = req.body;
       const email = await storage.markEmailProcessed(req.params.id, {
@@ -1086,13 +1131,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         relevanceScore,
         filterReason
       });
-      res.json(email);
+      res.json(sanitizeResponse(email));
     } catch (error) {
       res.status(500).json({ error: 'Failed to mark email as processed' });
     }
   });
 
-  app.post('/api/emails/sync', requireAuth, async (req, res) => {
+  app.post('/api/emails/sync', apiRateLimit, csrfProtection, requireAuth, async (req: any, res: any) => {
     try {
       const user = req.user as any;
       await syncService.syncEmails(user.id);
