@@ -30,7 +30,7 @@ import {
   MessageSquare, 
   Eye, 
   Edit, 
-  Trash, 
+  Trash2, 
   Search,
   Filter,
   Download,
@@ -40,7 +40,10 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  RefreshCw
+  RefreshCw,
+  Camera,
+  Sparkles,
+  Plus
 } from "lucide-react"
 import {
   useReactTable,
@@ -78,6 +81,8 @@ interface ContactsTableProps {
   onDeleteContact?: (contact: Contact) => void
   onBulkAction?: (action: string, contactIds: string[]) => void
   onExportData?: (format: string) => void
+  onAddContact?: () => void
+  onAITool?: (tool: string) => void
 }
 
 const useDebounce = (value: string, delay: number) => {
@@ -178,14 +183,16 @@ export function ContactsTable({
   onEditContact, 
   onDeleteContact,
   onBulkAction,
-  onExportData
+  onExportData,
+  onAddContact,
+  onAITool
 }: ContactsTableProps) {
   const [preferences] = useState(() => loadPreferences())
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>(preferences.sorting || [])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(preferences.columnVisibility || {})
-  const [rowSelection, setRowSelection] = useState({})
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: preferences.pageSize || 25,
@@ -507,7 +514,7 @@ export function ContactsTable({
               }}
               title="View contact details"
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 text-sky-500" />
             </Button>
             
             {onEditContact && (
@@ -521,7 +528,7 @@ export function ContactsTable({
                 }}
                 title="Edit contact"
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="h-4 w-4 text-green-500" />
               </Button>
             )}
             
@@ -536,7 +543,7 @@ export function ContactsTable({
                 }}
                 title="Delete contact"
               >
-                <Trash className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -575,6 +582,7 @@ export function ContactsTable({
       globalFilter: debouncedGlobalFilter,
     },
     enableRowSelection: true,
+    getRowId: (row) => row.id,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -590,7 +598,7 @@ export function ContactsTable({
   })
 
   const selectedRows = table.getFilteredSelectedRowModel().rows
-  const selectedContactIds = selectedRows.map(row => row.original.id)
+  const selectedContactIds = Object.keys(rowSelection).filter(id => rowSelection[id])
 
   const resetPreferences = () => {
     setColumnVisibility({})
@@ -642,21 +650,18 @@ export function ContactsTable({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  Actions ({selectedContactIds.length})
+                  Bulk Actions ({selectedContactIds.length})
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onBulkAction('enrich_photos', selectedContactIds)}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Enrich Photos ({selectedContactIds.length})
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onBulkAction('export', selectedContactIds)}>
                   <Download className="mr-2 h-4 w-4" />
-                  Export Selected
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onExportData?.('json')}>
-                  <Download className="mr-2 h-4 w-4" />
                   Export as JSON
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onExportData?.('csv')}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export as CSV
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onBulkAction('add_tag', selectedContactIds)}>
@@ -667,13 +672,12 @@ export function ContactsTable({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onBulkAction('delete', selectedContactIds)}>
-                  <Trash className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete Selected
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-
 
           {/* Column Visibility */}
           <DropdownMenu>
@@ -710,6 +714,32 @@ export function ContactsTable({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* AI Tools */}
+          {onAITool && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  AI Tools
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onAITool('enrich_photos')}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Enrich All Photos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Add Contact */}
+          {onAddContact && (
+            <Button onClick={onAddContact}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Contact
+            </Button>
+          )}
         </div>
       </div>
 

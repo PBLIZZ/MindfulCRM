@@ -23,7 +23,18 @@ import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import logoPath from '@assets/logo_1753860249688.png';
-import { Home, Users, Bot, Settings, ChevronDown, LogOut, Monitor, Sun, Moon } from 'lucide-react';
+import {
+  Home,
+  Users,
+  Bot,
+  Settings,
+  ChevronDown,
+  LogOut,
+  Monitor,
+  Sun,
+  Moon,
+  CheckSquare,
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +52,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
   { name: 'Contacts', href: '/contacts', icon: Users },
+  { name: 'Tasks', href: '/tasks', icon: CheckSquare },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 

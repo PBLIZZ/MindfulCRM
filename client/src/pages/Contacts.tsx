@@ -1,44 +1,177 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, Filter, Mail, Phone, Calendar, MessageSquare, Upload, Sparkles, Download } from 'lucide-react';
+import { Plus, Mail, Phone, Calendar, MessageSquare, Edit } from 'lucide-react';
+import { enrichSingleContact } from '@/api/photoEnrichmentApi';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import AddContactDialog from '@/components/Contact/AddContactDialog';
 import ContactDetail from '@/components/Contact/ContactDetail';
 import { ContactsTable } from '@/components/Contact/ContactsTable';
 import { ContactPhotoUpload } from '@/components/Contact/ContactPhotoUpload';
 import { AIPhotoReview } from '@/components/Contact/AIPhotoReview';
 import { DeleteContactDialog } from '@/components/Contact/DeleteContactDialog';
+import { EditContactModal } from '@/components/Contact/EditContactModal';
+import { TagSelectionDialog } from '@/components/Contact/TagSelectionDialog';
 import { useToast } from '@/hooks/use-toast';
 import type { Contact } from '@/components/Contact/ContactsTable';
 
 export default function Contacts() {
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [photoUploadContact, setPhotoUploadContact] = useState<Contact | null>(null);
   const [aiPhotoReviewContact, setAiPhotoReviewContact] = useState<Contact | null>(null);
   const [deleteContact, setDeleteContact] = useState<Contact | null>(null);
+  const [editContact, setEditContact] = useState<Contact | null>(null);
+  const [tagAction, setTagAction] = useState<{ type: 'add' | 'remove'; contactIds: string[] } | null>(null);
   const { toast } = useToast();
 
   const { data: contacts, isLoading } = useQuery({
     queryKey: ['/api/contacts'],
   }) as { data: Contact[]; isLoading: boolean };
 
+  const handleBulkPhotoEnrichment = async (contactIds: string[]) => {
+    try {
+      toast({
+        title: 'Photo Enrichment Started',
+        description: `Starting photo enrichment for ${contactIds.length} contact(s)...`,
+      });
+
+      let successCount = 0;
+      let failureCount = 0;
+
+      // Process each contact individually
+      for (const contactId of contactIds) {
+        try {
+          await enrichSingleContact(contactId);
+          successCount++;
+        } catch (error) {
+          console.error(`Failed to enrich photo for contact ${contactId}:`, error);
+          failureCount++;
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        toast({
+          title: 'Photo Enrichment Complete',
+          description: `✅ ${successCount} photo(s) enriched successfully${failureCount > 0 ? `, ❌ ${failureCount} failed` : ''}`,
+        });
+      } else {
+        toast({
+          title: 'Photo Enrichment Failed',
+          description: 'No photos could be enriched. Please check console for details.',
+          variant: 'destructive'
+        });
+      }
+
+      // Refresh the contacts list to show updated photos
+      window.location.reload();
+    } catch (error) {
+      console.error('Bulk photo enrichment error:', error);
+      toast({
+        title: 'Photo Enrichment Error',
+        description: 'An error occurred during photo enrichment. Please try again.',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleBulkAddTag = async (tag: any, contactIds: string[]) => {
+    try {
+      // Show loading state immediately
+      toast({
+        title: 'Adding tag...',
+        description: `Adding "${tag.name}" to ${contactIds.length} contact(s)...`,
+      });
+
+      const response = await fetch('/api/contacts/bulk/add-tag', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          contactIds,
+          tagId: tag.id,
+          tagName: tag.name,
+          tagColor: tag.color,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Tag added',
+          description: `Added "${tag.name}" tag to ${contactIds.length} contact(s).`,
+        });
+        // Use React Query to refresh data instead of page reload
+        window.location.reload();
+      } else {
+        throw new Error('Failed to add tag');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error adding tag',
+        description: 'Failed to add tag to contacts. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleBulkRemoveTag = async (tag: any, contactIds: string[]) => {
+    try {
+      // Show loading state immediately
+      toast({
+        title: 'Removing tag...',
+        description: `Removing "${tag.name}" from ${contactIds.length} contact(s)...`,
+      });
+
+      const response = await fetch('/api/contacts/bulk/remove-tag', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({
+          contactIds,
+          tagId: tag.id,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: 'Tag removed',
+          description: `Removed "${tag.name}" tag from ${contactIds.length} contact(s).`,
+        });
+        // Refresh contacts data
+        window.location.reload(); 
+      } else {
+        throw new Error('Failed to remove tag');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error removing tag',
+        description: 'Failed to remove tag from contacts. Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const handleBulkAction = async (action: string, contactIds: string[]) => {
     switch (action) {
+      case 'enrich_photos':
+        await handleBulkPhotoEnrichment(contactIds);
+        break;
       case 'export':
         await handleExportSelected(contactIds);
+        break;
+      case 'add_tag':
+        setTagAction({ type: 'add', contactIds });
+        break;
+      case 'remove_tag':
+        setTagAction({ type: 'remove', contactIds });
         break;
       case 'delete':
         // TODO: Implement bulk delete with confirmation
@@ -126,13 +259,20 @@ export default function Contacts() {
     }
   };
 
-  const filteredContacts =
-    contacts?.filter((contact: any) => {
-      const matchesSearch =
-        contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.email?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSearch;
-    }) || [];
+  const handleAITool = (tool: string) => {
+    switch (tool) {
+      case 'enrich_photos':
+        toast({
+          title: 'AI Photo Enrichment',
+          description: 'Batch photo enrichment coming soon.',
+        });
+        break;
+      default:
+        console.log('Unknown AI tool:', tool);
+    }
+  };
+
+  const allContacts = contacts || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -169,7 +309,10 @@ export default function Contacts() {
             ← Back to Contacts
           </Button>
         </div>
-        <ContactDetail contactId={selectedContactId} />
+        <ContactDetail 
+          contactId={selectedContactId} 
+          onEditContact={setEditContact}
+        />
       </div>
     );
   }
@@ -178,55 +321,18 @@ export default function Contacts() {
     <div className='space-y-6'>
       <div className='flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4'>
         <div>
-          <h1 className='text-3xl font-bold tracking-tight'>Contacts</h1>
+          <div className="flex items-center gap-3">
+            <h1 className='text-3xl font-bold tracking-tight'>Contacts</h1>
+            <Badge variant="secondary" className="text-sm">
+              {allContacts.length}
+            </Badge>
+          </div>
           <p className='text-muted-foreground mt-1'>
             Manage your client relationships and interactions
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className='flex items-center gap-2'>
-                <Sparkles className='h-4 w-4' />
-                AI Tools
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => {
-                // TODO: Batch AI photo enrichment
-                toast({
-                  title: 'AI Photo Enrichment',
-                  description: 'Batch photo enrichment coming soon.',
-                });
-              }}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Enrich All Photos
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleExportData('json')}>
-                <Download className="mr-2 h-4 w-4" />
-                Export All Data
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          
-          <Button onClick={() => setShowAddDialog(true)} className='flex items-center gap-2'>
-            <Plus className='h-4 w-4' />
-            Add Contact
-          </Button>
-        </div>
       </div>
 
-      <div className='flex flex-col sm:flex-row gap-4'>
-          <div className='relative flex-1'>
-            <Search className='absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4' />
-            <Input
-              placeholder='Search contacts...'
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className='pl-10'
-            />
-          </div>
-      </div>
 
       {isLoading ? (
         <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
@@ -248,15 +354,11 @@ export default function Contacts() {
               </Card>
             ))}
         </div>
-      ) : filteredContacts.length === 0 ? (
+      ) : allContacts.length === 0 ? (
         <Card className='text-center py-12'>
             <CardContent>
               <div className='text-muted-foreground mb-4'>
-                {searchTerm ? (
-                  <>No contacts found matching your criteria.</>
-                ) : (
-                  <>You haven't added any contacts yet.</>
-                )}
+                You haven't added any contacts yet.
               </div>
               <Button onClick={() => setShowAddDialog(true)} className='flex items-center gap-2'>
                 <Plus className='h-4 w-4' />
@@ -272,20 +374,19 @@ export default function Contacts() {
           </TabsList>
           <TabsContent value='table'>
             <ContactsTable 
-              contacts={filteredContacts} 
+              contacts={allContacts} 
               onSelectContact={setSelectedContactId}
-              onEditContact={(contact) => {
-                // TODO: Open edit dialog
-                console.log('Edit contact:', contact);
-              }}
+              onEditContact={setEditContact}
               onDeleteContact={setDeleteContact}
               onBulkAction={handleBulkAction}
               onExportData={handleExportData}
+              onAddContact={() => setShowAddDialog(true)}
+              onAITool={handleAITool}
             />
           </TabsContent>
           <TabsContent value='cards'>
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
-              {filteredContacts.map((contact: any) => (
+              {allContacts.map((contact: any) => (
                 <Card
                   key={contact.id}
                   className='cursor-pointer hover:shadow-md transition-shadow'
@@ -293,7 +394,7 @@ export default function Contacts() {
                 >
                   <CardHeader className='flex flex-row items-center space-y-0 pb-2'>
                     <Avatar className='h-10 w-10'>
-                      <AvatarImage src={contact.avatar} alt={contact.name} />
+                      <AvatarImage src={contact.avatarUrl} alt={contact.name} />
                       <AvatarFallback>{getInitials(contact.name)}</AvatarFallback>
                     </Avatar>
                     <div className='ml-3 space-y-1 flex-1'>
@@ -304,6 +405,17 @@ export default function Contacts() {
                         </Badge>
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditContact(contact);
+                      }}
+                    >
+                      <Edit className="h-4 w-4 text-green-500" />
+                    </Button>
                   </CardHeader>
                   <CardContent>
                     <div className='space-y-2 text-sm text-muted-foreground'>
@@ -367,6 +479,35 @@ export default function Contacts() {
         contact={deleteContact}
         open={!!deleteContact}
         onOpenChange={(open) => !open && setDeleteContact(null)}
+      />
+      
+      {/* Edit Contact Dialog */}
+      <EditContactModal
+        contact={editContact}
+        open={!!editContact}
+        onOpenChange={(open) => !open && setEditContact(null)}
+      />
+      
+      {/* Tag Selection Dialog */}
+      <TagSelectionDialog
+        open={!!tagAction}
+        onOpenChange={(open) => !open && setTagAction(null)}
+        onTagSelected={(tag) => {
+          if (tagAction) {
+            if (tagAction.type === 'add') {
+              handleBulkAddTag(tag, tagAction.contactIds);
+            } else {
+              handleBulkRemoveTag(tag, tagAction.contactIds);
+            }
+            setTagAction(null);
+          }
+        }}
+        title={tagAction?.type === 'add' ? 'Add Tag to Contacts' : 'Remove Tag from Contacts'}
+        description={
+          tagAction?.type === 'add' 
+            ? `Select a tag to add to ${tagAction?.contactIds.length || 0} selected contact(s).`
+            : `Select a tag to remove from ${tagAction?.contactIds.length || 0} selected contact(s).`
+        }
       />
     </div>
   );

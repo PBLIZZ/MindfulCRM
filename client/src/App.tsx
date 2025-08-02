@@ -8,7 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import AuthenticatedRoute from '@/components/Layout/AuthenticatedRoute';
 import Dashboard from '@/pages/Dashboard';
 import Contacts from '@/pages/Contacts';
-
+import Tasks from '@/pages/Tasks';
 import AIAssistant from '@/pages/AIAssistant';
 import Settings from '@/pages/Settings';
 import Login from '@/pages/Login';
@@ -28,8 +28,11 @@ function Router() {
           <Contacts />
         </AuthenticatedRoute>
       </Route>
-
-
+      <Route path='/tasks'>
+        <AuthenticatedRoute>
+          <Tasks />
+        </AuthenticatedRoute>
+      </Route>
       <Route path='/assistant'>
         <AuthenticatedRoute>
           <AIAssistant />

@@ -3,13 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Edit } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface ContactDetailProps {
   contactId: string;
+  onEditContact?: (contact: any) => void;
 }
 
-export default function ContactDetail({ contactId }: ContactDetailProps) {
+export default function ContactDetail({ contactId, onEditContact }: ContactDetailProps) {
   const { data: contact, isLoading } = useQuery({
     queryKey: ["/api/contacts", contactId],
   }) as { data: any, isLoading: boolean };
@@ -45,6 +49,14 @@ export default function ContactDetail({ contactId }: ContactDetailProps) {
     return variants[status] || "default";
   };
 
+  const getInitials = (name: string) => {
+    return name
+      ?.split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase() || '?'
+  };
+
   return (
     <div className="space-y-6">
       {/* Contact Header */}
@@ -52,11 +64,12 @@ export default function ContactDetail({ contactId }: ContactDetailProps) {
         <CardHeader>
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-4">
-              <img
-                src={`https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=64&h=64&fit=crop&crop=face`}
-                alt={contact.name}
-                className="w-16 h-16 rounded-full"
-              />
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={contact.avatarUrl} alt={contact.name} />
+                <AvatarFallback className="text-lg">
+                  {getInitials(contact.name)}
+                </AvatarFallback>
+              </Avatar>
               <div>
                 <CardTitle className="text-xl">{contact.name}</CardTitle>
                 <p className="text-muted-foreground">{contact.email}</p>
@@ -65,9 +78,22 @@ export default function ContactDetail({ contactId }: ContactDetailProps) {
                 )}
               </div>
             </div>
-            <Badge variant={getStatusBadge(contact.status)}>
-              {contact.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant={getStatusBadge(contact.status)}>
+                {contact.status}
+              </Badge>
+              {onEditContact && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onEditContact(contact)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Contact
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
       </Card>

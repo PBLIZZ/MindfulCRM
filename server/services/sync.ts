@@ -40,7 +40,7 @@ export class SyncService {
 
           await Promise.all([
             googleService.syncGmail(user),
-            googleService.syncCalendar(user),
+            googleService.syncCalendar(user, { syncType: 'incremental' }),
             googleService.syncDrive(user),
           ]);
 
@@ -63,7 +63,7 @@ export class SyncService {
 
       await Promise.all([
         googleService.syncGmail(user),
-        googleService.syncCalendar(user),
+        googleService.syncCalendar(user, { syncType: 'incremental' }),
         googleService.syncDrive(user),
       ]);
     } catch (error) {
@@ -78,7 +78,10 @@ export class SyncService {
         throw new Error('User not found');
       }
 
-      await googleService.syncCalendar(user);
+      // Use incremental sync for regular scheduled syncs
+      await googleService.syncCalendar(user, {
+        syncType: 'incremental'
+      });
     } catch (error) {
       console.error('Calendar sync error:', error);
       throw error;
