@@ -6,6 +6,16 @@ import {
   documents,
   syncStatus,
   calendarEvents,
+  emails,
+  contactPhotos,
+  tags,
+  contactTags,
+  processedEvents,
+  projects,
+  tasks,
+  taskActivities,
+  aiSuggestions,
+  dataProcessingJobs,
   type User,
   type InsertUser,
   type Contact,
@@ -20,16 +30,46 @@ import {
   type InsertSyncStatus,
   type CalendarEvent,
   type InsertCalendarEvent,
+  type Email,
+  type InsertEmail,
+  type ContactPhoto,
+  type InsertContactPhoto,
+  type Tag,
+  type InsertTag,
+  type ContactTag,
+  type InsertContactTag,
+  type ProcessedEvent,
+  type InsertProcessedEvent,
+  type Project,
+  type InsertProject,
+  type Task,
+  type InsertTask,
+  type TaskActivity,
+  type InsertTaskActivity,
+  type AiSuggestion,
+  type InsertAiSuggestion,
+  type DataProcessingJob,
+  type InsertDataProcessingJob,
 } from '@shared/schema';
 import { db } from './db';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
+import crypto from 'crypto';
 
 export interface IStorage {
   // Users
   getUser(id: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
+  updateUserGdprConsent(
+    id: string,
+    consent: {
+      allowProfilePictureScraping: boolean;
+      gdprConsentDate: Date;
+      gdprConsentVersion: string;
+    }
+  ): Promise<User>;
 
   // Contacts
   getContactsByUserId(userId: string): Promise<Contact[]>;
@@ -70,29 +110,104 @@ export interface IStorage {
     achievedGoals: number;
     responseRate: number;
   }>;
-  // Calendar Events
-  getCalendarEvents(userId: string, month?: string): Promise<any[]>;
-  createUICalendarEvent(event: any): Promise<any>;
 
-  // Email Management
-  getEmails(userId: string, folder: string): Promise<any[]>;
-  sendEmail(emailData: any): Promise<any>;
-  markEmailAsRead(emailId: string): Promise<boolean>;
-  toggleEmailStar(emailId: string): Promise<boolean>;
-  moveEmail(emailId: string, folder: string): Promise<boolean>;
+  // Emails (Raw Gmail Data - Filtered Business Emails)
+  getEmailsByUserId(userId: string, limit?: number): Promise<Email[]>;
+  getEmailsByContactId(contactId: string): Promise<Email[]>;
+  getEmailByGmailId(userId: string, gmailMessageId: string): Promise<Email | undefined>;
+  createEmail(email: InsertEmail): Promise<Email>;
+  updateEmail(id: string, updates: Partial<InsertEmail>): Promise<Email>;
+  getUnprocessedEmails(userId: string): Promise<Email[]>;
+  markEmailProcessed(id: string, extractedData: any): Promise<Email>;
 
   // Calendar Events (Raw Google Data)
   getCalendarEventsByUserId(userId: string, limit?: number): Promise<CalendarEvent[]>;
   getCalendarEventsByContactId(contactId: string): Promise<CalendarEvent[]>;
-  getCalendarEventByGoogleId(userId: string, googleEventId: string): Promise<CalendarEvent | undefined>;
+  getCalendarEventByGoogleId(
+    userId: string,
+    googleEventId: string
+  ): Promise<CalendarEvent | undefined>;
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEvent(id: string, updates: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
   getUnprocessedCalendarEvents(userId: string): Promise<CalendarEvent[]>;
   markCalendarEventProcessed(id: string, extractedData: any): Promise<CalendarEvent>;
+
+  // Contact Photos
+  createContactPhoto(photo: InsertContactPhoto): Promise<ContactPhoto>;
+  getContactPhotos(contactId: string): Promise<ContactPhoto[]>;
+  deleteContactPhoto(id: string): Promise<boolean>;
+
+  // Tags
+  getAllTags(): Promise<Tag[]>;
+  createTag(tag: InsertTag): Promise<Tag>;
+  addTagToContact(contactId: string, tagId: string): Promise<ContactTag>;
+  removeTagFromContact(contactId: string, tagId: string): Promise<boolean>;
+  addTagToContacts(contactIds: string[], tagId: string): Promise<ContactTag[]>;
+  removeTagFromContacts(contactIds: string[], tagId: string): Promise<boolean>;
+
+  // Processed Events - for deduplication and change tracking
+  getEventHash(event: CalendarEvent): Promise<string>;
+  shouldProcessEvent(eventId: string): Promise<boolean>;
+  markEventProcessed(
+    eventId: string,
+    eventHash: string,
+    isRelevant: boolean,
+    analysis?: any,
+    llmModel?: string
+  ): Promise<ProcessedEvent>;
+  getProcessedEvent(eventId: string): Promise<ProcessedEvent | undefined>;
+
+  // Task Management
+  // Projects
+  getProjectsByUserId(userId: string): Promise<Project[]>;
+  getProject(id: string): Promise<Project | undefined>;
+  createProject(project: InsertProject): Promise<Project>;
+  updateProject(id: string, updates: Partial<InsertProject>): Promise<Project>;
+  deleteProject(id: string): Promise<boolean>;
+
+  // Tasks
+  getTasksByUserId(userId: string, statuses?: string[]): Promise<Task[]>;
+  getTasksByProjectId(projectId: string): Promise<Task[]>;
+  getTasksByStatus(status: string, owner?: string): Promise<Task[]>;
+  getTask(id: string): Promise<Task | undefined>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: string, updates: Partial<InsertTask>): Promise<Task>;
+  deleteTask(id: string): Promise<boolean>;
+  getSubtasks(parentTaskId: string): Promise<Task[]>;
+
+  // Task Activities
+  getTaskActivities(taskId: string): Promise<TaskActivity[]>;
+  createTaskActivity(activity: InsertTaskActivity): Promise<TaskActivity>;
+
+  // AI Suggestions
+  getAiSuggestionsByUserId(userId: string, status?: string): Promise<AiSuggestion[]>;
+  getAiSuggestion(id: string): Promise<AiSuggestion | undefined>;
+  createAiSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion>;
+  updateAiSuggestion(id: string, updates: Partial<InsertAiSuggestion>): Promise<AiSuggestion>;
+  cleanupOldSuggestions(olderThan: Date): Promise<boolean>;
+
+  // Data Processing Jobs
+  getDataProcessingJobsByUserId(userId: string): Promise<DataProcessingJob[]>;
+  getFailedDataProcessingJobs(userId: string): Promise<DataProcessingJob[]>;
+  createDataProcessingJob(job: InsertDataProcessingJob): Promise<DataProcessingJob>;
+  updateDataProcessingJob(
+    id: string,
+    updates: Partial<InsertDataProcessingJob>
+  ): Promise<DataProcessingJob>;
+  cleanupOldDataProcessingJobs(olderThan: Date): Promise<boolean>;
+
+  // Helper methods for scheduler
+  getActiveUsers(daysSinceLastActivity: number): Promise<Array<{ id: string; email: string }>>;
+  getRecentEmails(userId: string, daysBack: number): Promise<Email[]>;
 }
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserById(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
@@ -116,17 +231,73 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async updateUserGdprConsent(
+    id: string,
+    consent: {
+      allowProfilePictureScraping: boolean;
+      gdprConsentDate: Date;
+      gdprConsentVersion: string;
+    }
+  ): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({
+        allowProfilePictureScraping: consent.allowProfilePictureScraping,
+        gdprConsentDate: consent.gdprConsentDate,
+        gdprConsentVersion: consent.gdprConsentVersion,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
   async getContactsByUserId(userId: string): Promise<Contact[]> {
-    return await db
+    // First get the contacts
+    const contactList = await db
       .select()
       .from(contacts)
       .where(eq(contacts.userId, userId))
       .orderBy(desc(contacts.lastContact));
+
+    // Then get tags for each contact
+    const contactsWithTags = await Promise.all(
+      contactList.map(async (contact) => {
+        const contactTagsData = await db
+          .select({
+            tag: tags,
+          })
+          .from(contactTags)
+          .innerJoin(tags, eq(contactTags.tagId, tags.id))
+          .where(eq(contactTags.contactId, contact.id));
+
+        return {
+          ...contact,
+          tags: contactTagsData.map((ct) => ct.tag),
+        };
+      })
+    );
+
+    return contactsWithTags;
   }
 
-  async getContact(id: string): Promise<Contact | undefined> {
+  async getContact(id: string): Promise<(Contact & { tags: Tag[] }) | undefined> {
     const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
-    return contact || undefined;
+    if (!contact) return undefined;
+
+    // Get tags for this contact
+    const contactTagsData = await db
+      .select({
+        tag: tags,
+      })
+      .from(contactTags)
+      .innerJoin(tags, eq(contactTags.tagId, tags.id))
+      .where(eq(contactTags.contactId, contact.id));
+
+    return {
+      ...contact,
+      tags: contactTagsData.map((ct) => ct.tag),
+    };
   }
 
   async createContact(insertContact: InsertContact): Promise<Contact> {
@@ -162,6 +333,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createInteraction(insertInteraction: InsertInteraction): Promise<Interaction> {
+    // Auto-analyze sentiment if not provided and content exists
+    if (!insertInteraction.sentiment && insertInteraction.content) {
+      try {
+        const { mistralService } = await import('./services/mistral');
+        const sentimentResult = await mistralService.analyzeSentiment(insertInteraction.content);
+        insertInteraction.sentiment = sentimentResult.rating;
+      } catch (error) {
+        console.warn('Failed to analyze sentiment for interaction:', error);
+        // Continue without sentiment - it's not critical
+      }
+    }
+
     const [interaction] = await db.insert(interactions).values(insertInteraction).returning();
     return interaction;
   }
@@ -304,123 +487,65 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Calendar Events - Mock implementation for now
-  async getCalendarEvents(userId: string, month?: string): Promise<any[]> {
-    // In a real implementation, this would fetch from Google Calendar API
-    // For now, return sample events to demonstrate the UI
-    const sampleEvents = [
-      {
-        id: '1',
-        title: 'Wellness Session with Sarah',
-        description: 'Weekly check-in and goal review',
-        start: new Date(2025, 0, 30, 10, 0).toISOString(),
-        end: new Date(2025, 0, 30, 11, 0).toISOString(),
-        location: 'Wellness Center Room 1',
-        meetingType: 'in-person',
-        contactId: '1',
-        contact: { id: '1', name: 'Sarah Johnson', avatar: null },
-      },
-      {
-        id: '2',
-        title: 'Virtual Consultation',
-        description: 'Initial consultation call',
-        start: new Date(2025, 0, 31, 14, 30).toISOString(),
-        end: new Date(2025, 0, 31, 15, 30).toISOString(),
-        location: 'Zoom Meeting',
-        meetingType: 'video',
-        contactId: '2',
-        contact: { id: '2', name: 'Mike Chen', avatar: null },
-      },
-    ];
-    return sampleEvents;
+  // Emails (Raw Gmail Data - Filtered Business Emails)
+  async getEmailsByUserId(userId: string, limit: number = 100): Promise<Email[]> {
+    return await db
+      .select()
+      .from(emails)
+      .where(eq(emails.userId, userId))
+      .orderBy(desc(emails.timestamp))
+      .limit(limit);
   }
 
-  async createUICalendarEvent(event: any): Promise<any> {
-    // In a real implementation, this would create an event via Google Calendar API
-    // For now, return the event with an ID
-    return {
-      ...event,
-      id: `event_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
+  async getEmailsByContactId(contactId: string): Promise<Email[]> {
+    return await db
+      .select()
+      .from(emails)
+      .where(eq(emails.contactId, contactId))
+      .orderBy(desc(emails.timestamp));
   }
 
-  // Email Management - Mock implementation for now
-  async getEmails(userId: string, folder: string): Promise<any[]> {
-    // In a real implementation, this would fetch from Gmail API
-    // For now, return sample emails to demonstrate the UI
-    const sampleEmails = [
-      {
-        id: '1',
-        subject: 'Thank you for the wellness session',
-        from: {
-          name: 'Sarah Johnson',
-          email: 'sarah.johnson@email.com',
-          avatar: null,
-        },
-        to: [{ name: 'You', email: 'you@example.com' }],
-        body: '<p>Hi,</p><p>I wanted to thank you for the amazing wellness session yesterday. I feel much more motivated to reach my health goals!</p><p>Best regards,<br>Sarah</p>',
-        snippet: 'I wanted to thank you for the amazing wellness session yesterday...',
-        timestamp: new Date(2025, 0, 29, 15, 30).toISOString(),
-        isRead: false,
-        isStarred: true,
-        hasAttachments: false,
-        labels: ['inbox'],
-        contactId: '1',
-        contact: { id: '1', name: 'Sarah Johnson', avatar: null },
-      },
-      {
-        id: '2',
-        subject: 'Question about meal planning',
-        from: {
-          name: 'Mike Chen',
-          email: 'mike.chen@email.com',
-          avatar: null,
-        },
-        to: [{ name: 'You', email: 'you@example.com' }],
-        body: '<p>Hello,</p><p>I had a question about the meal planning we discussed. Could you send me those healthy recipe suggestions you mentioned?</p><p>Thanks!<br>Mike</p>',
-        snippet: 'I had a question about the meal planning we discussed...',
-        timestamp: new Date(2025, 0, 29, 9, 15).toISOString(),
-        isRead: true,
-        isStarred: false,
-        hasAttachments: false,
-        labels: ['inbox'],
-        contactId: '2',
-        contact: { id: '2', name: 'Mike Chen', avatar: null },
-      },
-    ];
-
-    return sampleEmails.filter((email) => {
-      if (folder === 'starred') return email.isStarred;
-      if (folder === 'inbox') return email.labels.includes('inbox');
-      return true;
-    });
+  async getEmailByGmailId(userId: string, gmailMessageId: string): Promise<Email | undefined> {
+    const [email] = await db
+      .select()
+      .from(emails)
+      .where(and(eq(emails.userId, userId), eq(emails.gmailMessageId, gmailMessageId)));
+    return email || undefined;
   }
 
-  async sendEmail(emailData: any): Promise<any> {
-    // In a real implementation, this would send via Gmail API
-    // For now, return success response
-    return {
-      id: `sent_${Date.now()}`,
-      ...emailData,
-      timestamp: new Date().toISOString(),
-      sent: true,
-    };
+  async createEmail(insertEmail: InsertEmail): Promise<Email> {
+    const [email] = await db.insert(emails).values(insertEmail).returning();
+    return email;
   }
 
-  async markEmailAsRead(emailId: string): Promise<boolean> {
-    // In a real implementation, this would update via Gmail API
-    return true;
+  async updateEmail(id: string, updates: Partial<InsertEmail>): Promise<Email> {
+    const [email] = await db
+      .update(emails)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(emails.id, id))
+      .returning();
+    return email;
   }
 
-  async toggleEmailStar(emailId: string): Promise<boolean> {
-    // In a real implementation, this would update via Gmail API
-    return true;
+  async getUnprocessedEmails(userId: string): Promise<Email[]> {
+    return await db
+      .select()
+      .from(emails)
+      .where(and(eq(emails.userId, userId), eq(emails.processed, false)))
+      .orderBy(desc(emails.timestamp));
   }
 
-  async moveEmail(emailId: string, folder: string): Promise<boolean> {
-    // In a real implementation, this would move via Gmail API
-    return true;
+  async markEmailProcessed(id: string, extractedData: any): Promise<Email> {
+    const [email] = await db
+      .update(emails)
+      .set({
+        processed: true,
+        extractedData,
+        updatedAt: new Date(),
+      })
+      .where(eq(emails.id, id))
+      .returning();
+    return email;
   }
 
   // Calendar Events (Raw Google Data)
@@ -441,14 +566,16 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(calendarEvents.startTime));
   }
 
-  async getCalendarEventByGoogleId(userId: string, googleEventId: string): Promise<CalendarEvent | undefined> {
+  async getCalendarEventByGoogleId(
+    userId: string,
+    googleEventId: string
+  ): Promise<CalendarEvent | undefined> {
     const [event] = await db
       .select()
       .from(calendarEvents)
-      .where(and(
-        eq(calendarEvents.userId, userId),
-        eq(calendarEvents.googleEventId, googleEventId)
-      ));
+      .where(
+        and(eq(calendarEvents.userId, userId), eq(calendarEvents.googleEventId, googleEventId))
+      );
     return event || undefined;
   }
 
@@ -457,7 +584,10 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
-  async updateCalendarEvent(id: string, updates: Partial<InsertCalendarEvent>): Promise<CalendarEvent> {
+  async updateCalendarEvent(
+    id: string,
+    updates: Partial<InsertCalendarEvent>
+  ): Promise<CalendarEvent> {
     const [event] = await db
       .update(calendarEvents)
       .set({ ...updates, updatedAt: new Date() })
@@ -470,24 +600,431 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(calendarEvents)
-      .where(and(
-        eq(calendarEvents.userId, userId),
-        eq(calendarEvents.processed, false)
-      ))
+      .where(and(eq(calendarEvents.userId, userId), eq(calendarEvents.processed, false)))
       .orderBy(desc(calendarEvents.startTime));
   }
 
   async markCalendarEventProcessed(id: string, extractedData: any): Promise<CalendarEvent> {
     const [event] = await db
       .update(calendarEvents)
-      .set({ 
-        processed: true, 
+      .set({
+        processed: true,
         extractedData,
-        updatedAt: new Date() 
+        updatedAt: new Date(),
       })
       .where(eq(calendarEvents.id, id))
       .returning();
     return event;
+  }
+
+  // Contact Photos
+  async createContactPhoto(insertPhoto: InsertContactPhoto): Promise<ContactPhoto> {
+    const [photo] = await db.insert(contactPhotos).values(insertPhoto).returning();
+    return photo;
+  }
+
+  async getContactPhotos(contactId: string): Promise<ContactPhoto[]> {
+    return await db
+      .select()
+      .from(contactPhotos)
+      .where(eq(contactPhotos.contactId, contactId))
+      .orderBy(desc(contactPhotos.createdAt));
+  }
+
+  async deleteContactPhoto(id: string): Promise<boolean> {
+    try {
+      await db.delete(contactPhotos).where(eq(contactPhotos.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting contact photo:', error);
+      return false;
+    }
+  }
+
+  // Tag methods
+  async getAllTags(): Promise<Tag[]> {
+    return await db.select().from(tags).orderBy(tags.name);
+  }
+
+  async createTag(tag: InsertTag): Promise<Tag> {
+    const [newTag] = await db.insert(tags).values(tag).returning();
+    return newTag;
+  }
+
+  async addTagToContact(contactId: string, tagId: string): Promise<ContactTag> {
+    const [contactTag] = await db.insert(contactTags).values({ contactId, tagId }).returning();
+    return contactTag;
+  }
+
+  async removeTagFromContact(contactId: string, tagId: string): Promise<boolean> {
+    try {
+      await db
+        .delete(contactTags)
+        .where(and(eq(contactTags.contactId, contactId), eq(contactTags.tagId, tagId)));
+      return true;
+    } catch (error) {
+      console.error('Error removing tag from contact:', error);
+      return false;
+    }
+  }
+
+  async addTagToContacts(contactIds: string[], tagId: string): Promise<ContactTag[]> {
+    const contactTagInserts = contactIds.map((contactId) => ({
+      contactId,
+      tagId,
+    }));
+    return await db.insert(contactTags).values(contactTagInserts).returning();
+  }
+
+  async removeTagFromContacts(contactIds: string[], tagId: string): Promise<boolean> {
+    try {
+      await db
+        .delete(contactTags)
+        .where(
+          and(sql`${contactTags.contactId} = ANY(${contactIds})`, eq(contactTags.tagId, tagId))
+        );
+      return true;
+    } catch (error) {
+      console.error('Error removing tag from contacts:', error);
+      return false;
+    }
+  }
+
+  // Processed Events methods
+  async getEventHash(event: CalendarEvent): Promise<string> {
+    const hashData = {
+      summary: event.summary,
+      description: event.description,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      attendees: event.attendees,
+      location: event.location,
+    };
+
+    return crypto.createHash('sha256').update(JSON.stringify(hashData)).digest('hex');
+  }
+
+  async shouldProcessEvent(eventId: string): Promise<boolean> {
+    const existingRecord = await this.getProcessedEvent(eventId);
+
+    if (!existingRecord) return true;
+
+    // Get the current event data
+    const [currentEvent] = await db
+      .select()
+      .from(calendarEvents)
+      .where(eq(calendarEvents.id, eventId));
+
+    if (!currentEvent) return false;
+
+    // Check if event has changed by comparing hashes
+    const currentHash = await this.getEventHash(currentEvent);
+    return existingRecord.eventHash !== currentHash;
+  }
+
+  async markEventProcessed(
+    eventId: string,
+    eventHash: string,
+    isRelevant: boolean,
+    analysis?: any,
+    llmModel?: string
+  ): Promise<ProcessedEvent> {
+    const processedEventData: InsertProcessedEvent = {
+      eventId,
+      eventHash,
+      processedAt: new Date(),
+      lastModified: new Date(),
+      isRelevant,
+      analysis,
+      llmModel,
+    };
+
+    // Use upsert pattern - try to insert, if conflict then update
+    const [processedEvent] = await db
+      .insert(processedEvents)
+      .values(processedEventData)
+      .onConflictDoUpdate({
+        target: processedEvents.eventId,
+        set: {
+          eventHash,
+          processedAt: new Date(),
+          lastModified: new Date(),
+          isRelevant,
+          analysis,
+          llmModel,
+          updatedAt: new Date(),
+        },
+      })
+      .returning();
+
+    return processedEvent;
+  }
+
+  async getProcessedEvent(eventId: string): Promise<ProcessedEvent | undefined> {
+    const [processedEvent] = await db
+      .select()
+      .from(processedEvents)
+      .where(eq(processedEvents.eventId, eventId));
+    return processedEvent || undefined;
+  }
+
+  // Task Management Implementation
+  // Projects
+  async getProjectsByUserId(userId: string): Promise<Project[]> {
+    return await db
+      .select()
+      .from(projects)
+      .where(and(eq(projects.userId, userId), eq(projects.isArchived, false)))
+      .orderBy(desc(projects.createdAt));
+  }
+
+  async getProject(id: string): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project || undefined;
+  }
+
+  async createProject(project: InsertProject): Promise<Project> {
+    const [newProject] = await db.insert(projects).values(project).returning();
+    return newProject;
+  }
+
+  async updateProject(id: string, updates: Partial<InsertProject>): Promise<Project> {
+    const [project] = await db
+      .update(projects)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(projects.id, id))
+      .returning();
+    return project;
+  }
+
+  async deleteProject(id: string): Promise<boolean> {
+    try {
+      await db.update(projects).set({ isArchived: true }).where(eq(projects.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      return false;
+    }
+  }
+
+  // Tasks
+  async getTasksByUserId(userId: string, statuses?: string[]): Promise<Task[]> {
+    let whereConditions = [eq(tasks.userId, userId)];
+
+    if (statuses && statuses.length > 0) {
+      whereConditions.push(sql`${tasks.status} = ANY(${statuses})`);
+    }
+
+    return await db
+      .select()
+      .from(tasks)
+      .where(and(...whereConditions))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTasksByProjectId(projectId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.projectId, projectId))
+      .orderBy(tasks.orderIndex, desc(tasks.createdAt));
+  }
+
+  async getTasksByStatus(
+    status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'waiting_approval',
+    owner?: 'user' | 'ai_assistant'
+  ): Promise<Task[]> {
+    let whereConditions = [eq(tasks.status, status)];
+
+    if (owner) {
+      whereConditions.push(eq(tasks.owner, owner));
+    }
+
+    return await db
+      .select()
+      .from(tasks)
+      .where(and(...whereConditions))
+      .orderBy(desc(tasks.createdAt));
+  }
+
+  async getTask(id: string): Promise<Task | undefined> {
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
+    return task || undefined;
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const [newTask] = await db.insert(tasks).values(task).returning();
+    return newTask;
+  }
+
+  async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task> {
+    const [task] = await db
+      .update(tasks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return task;
+  }
+
+  async deleteTask(id: string): Promise<boolean> {
+    try {
+      await db.delete(tasks).where(eq(tasks.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      return false;
+    }
+  }
+
+  async getSubtasks(parentTaskId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.parentTaskId, parentTaskId))
+      .orderBy(tasks.orderIndex, desc(tasks.createdAt));
+  }
+
+  // Task Activities
+  async getTaskActivities(taskId: string): Promise<TaskActivity[]> {
+    return await db
+      .select()
+      .from(taskActivities)
+      .where(eq(taskActivities.taskId, taskId))
+      .orderBy(desc(taskActivities.createdAt));
+  }
+
+  async createTaskActivity(activity: InsertTaskActivity): Promise<TaskActivity> {
+    const [newActivity] = await db.insert(taskActivities).values(activity).returning();
+    return newActivity;
+  }
+
+  // AI Suggestions
+  async getAiSuggestionsByUserId(userId: string, status?: string): Promise<AiSuggestion[]> {
+    let whereConditions = [eq(aiSuggestions.userId, userId)];
+
+    if (status) {
+      whereConditions.push(eq(aiSuggestions.status, status));
+    }
+
+    return await db
+      .select()
+      .from(aiSuggestions)
+      .where(and(...whereConditions))
+      .orderBy(desc(aiSuggestions.createdAt));
+  }
+
+  async getAiSuggestion(id: string): Promise<AiSuggestion | undefined> {
+    const [suggestion] = await db.select().from(aiSuggestions).where(eq(aiSuggestions.id, id));
+    return suggestion || undefined;
+  }
+
+  async createAiSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion> {
+    const [newSuggestion] = await db.insert(aiSuggestions).values(suggestion).returning();
+    return newSuggestion;
+  }
+
+  async updateAiSuggestion(
+    id: string,
+    updates: Partial<InsertAiSuggestion>
+  ): Promise<AiSuggestion> {
+    const [suggestion] = await db
+      .update(aiSuggestions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(aiSuggestions.id, id))
+      .returning();
+    return suggestion;
+  }
+
+  async cleanupOldSuggestions(olderThan: Date): Promise<boolean> {
+    try {
+      await db
+        .delete(aiSuggestions)
+        .where(
+          and(
+            lte(aiSuggestions.createdAt, olderThan),
+            sql`${aiSuggestions.status} IN ('executed', 'rejected')`
+          )
+        );
+      return true;
+    } catch (error) {
+      console.error('Error cleaning up old suggestions:', error);
+      return false;
+    }
+  }
+
+  // Data Processing Jobs
+  async getDataProcessingJobsByUserId(userId: string): Promise<DataProcessingJob[]> {
+    return await db
+      .select()
+      .from(dataProcessingJobs)
+      .where(eq(dataProcessingJobs.userId, userId))
+      .orderBy(desc(dataProcessingJobs.createdAt));
+  }
+
+  async getFailedDataProcessingJobs(userId: string): Promise<DataProcessingJob[]> {
+    return await db
+      .select()
+      .from(dataProcessingJobs)
+      .where(and(eq(dataProcessingJobs.userId, userId), eq(dataProcessingJobs.status, 'failed')))
+      .orderBy(desc(dataProcessingJobs.createdAt));
+  }
+
+  async createDataProcessingJob(job: InsertDataProcessingJob): Promise<DataProcessingJob> {
+    const [newJob] = await db.insert(dataProcessingJobs).values(job).returning();
+    return newJob;
+  }
+
+  async updateDataProcessingJob(
+    id: string,
+    updates: Partial<InsertDataProcessingJob>
+  ): Promise<DataProcessingJob> {
+    const [job] = await db
+      .update(dataProcessingJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(dataProcessingJobs.id, id))
+      .returning();
+    return job;
+  }
+
+  async cleanupOldDataProcessingJobs(olderThan: Date): Promise<boolean> {
+    try {
+      await db
+        .delete(dataProcessingJobs)
+        .where(
+          and(
+            lte(dataProcessingJobs.createdAt, olderThan),
+            sql`${dataProcessingJobs.status} IN ('completed', 'failed')`
+          )
+        );
+      return true;
+    } catch (error) {
+      console.error('Error cleaning up old data processing jobs:', error);
+      return false;
+    }
+  }
+
+  // Helper methods for scheduler
+  async getActiveUsers(
+    daysSinceLastActivity: number
+  ): Promise<Array<{ id: string; email: string }>> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysSinceLastActivity);
+
+    return await db
+      .select({ id: users.id, email: users.email })
+      .from(users)
+      .where(gte(users.updatedAt, cutoffDate));
+  }
+
+  async getRecentEmails(userId: string, daysBack: number): Promise<Email[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+    return await db
+      .select()
+      .from(emails)
+      .where(and(eq(emails.userId, userId), gte(emails.timestamp, cutoffDate)))
+      .orderBy(desc(emails.timestamp));
   }
 }
 

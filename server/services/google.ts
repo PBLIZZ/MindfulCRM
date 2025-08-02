@@ -91,16 +91,33 @@ export class GoogleService {
     }
   }
 
-  async syncCalendar(user: User): Promise<void> {
+  async syncCalendar(user: User, options?: {
+    startDate?: Date;
+    endDate?: Date;
+    syncType?: 'initial' | 'incremental';
+  }): Promise<void> {
     try {
       const oauth2Client = this.getOAuth2Client(user);
       const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
       const now = new Date();
-      const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      const syncType = options?.syncType || 'incremental';
+      
+      // Set date ranges based on sync type
+      let startDate: Date;
+      let endDate: Date;
+      
+      if (syncType === 'initial') {
+        // Initial sync: 1 year back, 6 months forward
+        startDate = options?.startDate || new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        endDate = options?.endDate || new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+      } else {
+        // Incremental sync: 7 days back (for updates), 6 months forward
+        startDate = options?.startDate || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        endDate = options?.endDate || new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+      }
 
-      console.log(`Syncing calendar events for user ${user.email} from ${ninetyDaysAgo.toISOString()} to ${ninetyDaysFromNow.toISOString()}`);
+      console.log(`${syncType} sync for user ${user.email} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
       // First, get all user's calendars
       const calendarListResponse = await calendar.calendarList.list();
@@ -123,8 +140,8 @@ export class GoogleService {
         try {
           const response = await calendar.events.list({
             calendarId: cal.id,
-            timeMin: ninetyDaysAgo.toISOString(),
-            timeMax: ninetyDaysFromNow.toISOString(),
+            timeMin: startDate.toISOString(),
+            timeMax: endDate.toISOString(),
             singleEvents: true,
             orderBy: 'startTime',
             maxResults: 2500,

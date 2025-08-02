@@ -37,6 +37,17 @@ interface Insight {
   createdAt: string;
 }
 
+interface UpcomingEvent {
+  id: string;
+  summary: string;
+  startTime: string;
+  endTime: string;
+  attendees?: any[];
+  isClientRelated: boolean;
+  sessionType?: string;
+  confidence: number;
+}
+
 export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -48,6 +59,16 @@ export default function AIAssistant() {
   const { data: insights } = useQuery({
     queryKey: ["/api/ai/insights"],
     refetchInterval: 300000, // Refetch every 5 minutes
+  });
+
+  // Fetch upcoming calendar events with AI analysis
+  const { data: upcomingEvents } = useQuery({
+    queryKey: ["/api/calendar/upcoming"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/calendar/upcoming?limit=10");
+      return response.json();
+    },
+    refetchInterval: 600000, // Refetch every 10 minutes
   });
 
   const chatMutation = useMutation({
@@ -179,10 +200,11 @@ export default function AIAssistant() {
 
   const quickPrompts = [
     "Summarize my recent client interactions",
-    "What are my upcoming meetings today?",
+    "What are my upcoming client sessions?",
     "Generate a follow-up email template",
     "Analyze my client engagement trends",
     "Suggest next steps for my top clients",
+    "Review today's calendar for client sessions",
   ];
 
   return (
@@ -298,8 +320,84 @@ export default function AIAssistant() {
         </Card>
       </div>
 
-      {/* Insights Sidebar */}
-      <div className="w-full lg:w-80 lg:shrink-0 lg:max-h-full">
+      {/* Insights & Events Sidebar */}
+      <div className="w-full lg:w-80 lg:shrink-0 lg:max-h-full space-y-4">
+        {/* Upcoming Events */}
+        <Card className="lg:h-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-teal-600" />
+              Upcoming Client Sessions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-48 lg:h-60">
+              <div className="space-y-3">
+                {upcomingEvents && Array.isArray(upcomingEvents) && upcomingEvents.length > 0 ? (
+                  upcomingEvents
+                    .filter((event: any) => event.extractedData?.isRelevant && event.extractedData?.isClientRelated)
+                    .slice(0, 5)
+                    .map((event: any) => {
+                      const startTime = new Date(event.startTime);
+                      const isToday = startTime.toDateString() === new Date().toDateString();
+                      const isSoon = startTime.getTime() - Date.now() < 2 * 60 * 60 * 1000; // Within 2 hours
+                      
+                      return (
+                        <div key={event.id} className={`border rounded-lg p-3 ${
+                          isSoon ? 'border-orange-200 bg-orange-50 dark:bg-orange-950' : 
+                          isToday ? 'border-teal-200 bg-teal-50 dark:bg-teal-950' : ''
+                        }`}>
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-medium text-sm line-clamp-2">{event.summary}</h4>
+                            {event.extractedData?.confidence && (
+                              <Badge variant="secondary" className="text-xs">
+                                {Math.round(event.extractedData.confidence * 100)}%
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {startTime.toLocaleDateString()} at {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            {event.extractedData?.sessionType && (
+                              <p className="text-xs text-teal-600 font-medium capitalize">
+                                {event.extractedData.sessionType}
+                              </p>
+                            )}
+                            {event.extractedData?.clientEmails?.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                With: {event.extractedData.clientEmails.slice(0, 2).join(', ')}
+                                {event.extractedData.clientEmails.length > 2 && ` +${event.extractedData.clientEmails.length - 2} more`}
+                              </p>
+                            )}
+                          </div>
+                          {isSoon && (
+                            <div className="mt-2 text-xs text-orange-600 font-medium flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              Starting soon
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      No upcoming client sessions found
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Events are filtered using AI to show only relevant client sessions
+                    </p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* AI Insights */}
         <Card className="lg:h-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -308,7 +406,7 @@ export default function AIAssistant() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-48 lg:h-80">
+            <ScrollArea className="h-48 lg:h-60">
               <div className="space-y-4">
                 {insights && Array.isArray(insights) && insights.length > 0 ? (
                   insights.map((insight: Insight) => (
@@ -343,7 +441,8 @@ export default function AIAssistant() {
           </CardContent>
         </Card>
 
-        <Card className="mt-4 hidden lg:block">
+        {/* Quick Actions */}
+        <Card className="hidden lg:block">
           <CardHeader>
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
