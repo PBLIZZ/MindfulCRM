@@ -10,7 +10,8 @@
     "check": "tsc",
     "db:push": "drizzle-kit push",
     "seed": "tsx server/seed-test-data.ts",
-    "test:llm": "tsx server/test-llm-integration.ts"
+    "test:llm": "tsx server/test-llm-integration.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -118,6 +119,8 @@
     "@vitejs/plugin-react": "^4.3.2",
     "drizzle-kit": "^0.31.4",
     "esbuild": "^0.25.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2",
     "postcss": "^8.4.47",
     "tailwindcss": "^4.1.11",
     "tsx": "^4.19.1",
@@ -126,5 +129,13 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "npm run check"
+    ],
+    "*.{js,jsx,ts,tsx,json,css,md}": [
+      "echo 'Checking staged files...'"
+    ]
   }
 }

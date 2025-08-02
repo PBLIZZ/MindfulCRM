@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run lint-staged for efficient checking of only staged files
+echo "🔍 Running checks on staged files..."
+npx lint-staged
+
+# Check for potential security issues in dependencies
+echo "🔒 Checking for security vulnerabilities..."
+npm audit --audit-level=high
+
+echo "✅ Pre-commit checks completed!"
