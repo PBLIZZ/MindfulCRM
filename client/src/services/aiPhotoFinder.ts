@@ -20,6 +20,34 @@ interface PhotoSuggestion {
   }
 }
 
+interface ClearbitPersonResponse {
+  avatar?: string
+  name?: {
+    fullName?: string
+    givenName?: string
+    familyName?: string
+  }
+  employment?: {
+    name?: string
+    title?: string
+    domain?: string
+  }
+  [key: string]: unknown
+}
+
+interface PhotoDownloadResponse {
+  avatarUrl?: string
+  success?: boolean
+  message?: string
+  [key: string]: unknown
+}
+
+interface ErrorResponse {
+  message?: string
+  error?: string
+  [key: string]: unknown
+}
+
 interface AIPhotoFinderResult {
   success: boolean
   suggestions: PhotoSuggestion[]
@@ -30,7 +58,7 @@ class AIPhotoFinderService {
   private apiKey?: string
 
   constructor() {
-    this.apiKey = localStorage.getItem('openai_api_key') || undefined
+    this.apiKey = localStorage.getItem('openai_api_key') ?? undefined
   }
 
   /**
@@ -75,7 +103,6 @@ class AIPhotoFinderService {
         suggestions: suggestions.sort((a, b) => b.confidence - a.confidence)
       }
     } catch (error) {
-      console.error('AIPhotoFinder error:', error)
       return {
         success: false,
         suggestions: [],
@@ -109,8 +136,7 @@ class AIPhotoFinderService {
           }
         }
       }
-    } catch (error) {
-      console.warn('Gravatar lookup failed:', error)
+    } catch {
     }
     return null
   }
@@ -125,8 +151,8 @@ class AIPhotoFinderService {
       // Note: This is a simplified version. In production, you'd need Clearbit API key
       const response = await fetch(clearbitUrl)
       if (response.ok) {
-        const data = await response.json()
-        if (data.avatar) {
+        const data = await response.json() as ClearbitPersonResponse
+        if (data.avatar && typeof data.avatar === 'string') {
           return {
             id: `clearbit_${email}`,
             url: data.avatar,
@@ -141,8 +167,7 @@ class AIPhotoFinderService {
           }
         }
       }
-    } catch (error) {
-      console.warn('Clearbit lookup failed:', error)
+    } catch {
     }
     return null
   }
@@ -187,8 +212,7 @@ class AIPhotoFinderService {
           description: `AI-generated avatar for ${contactInfo.name} (${initials})`
         }
       }
-    } catch (error) {
-      console.warn('AI avatar generation failed:', error)
+    } catch {
     }
     return null
   }
@@ -213,14 +237,15 @@ class AIPhotoFinderService {
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Download failed')
+        const error = await response.json() as ErrorResponse
+        const errorMessage = error.message || error.error || 'Download failed'
+        throw new Error(typeof errorMessage === 'string' ? errorMessage : 'Download failed')
       }
 
-      const result = await response.json()
+      const result = await response.json() as PhotoDownloadResponse
       return {
         success: true,
-        avatarUrl: result.avatarUrl
+        avatarUrl: typeof result.avatarUrl === 'string' ? result.avatarUrl : undefined
       }
     } catch (error) {
       return {

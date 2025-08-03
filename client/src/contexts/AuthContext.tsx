@@ -1,6 +1,6 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { User } from "@shared/schema";
+import type { User } from "@shared/schema.js";
 
 interface AuthContextType {
   user: User | null;
@@ -11,7 +11,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }): React.ReactElement {
   const [user, setUser] = useState<User | null>(null);
 
   const { data, isLoading, error } = useQuery({
@@ -27,11 +27,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [data, error]);
 
-  const login = () => {
+  const login = (): void => {
     window.location.href = "/auth/google";
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
       setUser(null);
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");

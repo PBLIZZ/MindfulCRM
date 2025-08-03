@@ -1,20 +1,21 @@
+import React from 'react';
 import { Switch, Route } from 'wouter';
-import { queryClient } from './lib/queryClient';
+import { queryClient } from './lib/queryClient.js';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/toaster';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { AuthProvider } from '@/contexts/AuthContext';
-import AuthenticatedRoute from '@/components/Layout/AuthenticatedRoute';
-import Dashboard from '@/pages/Dashboard';
-import Contacts from '@/pages/Contacts';
-import Tasks from '@/pages/Tasks';
-import AIAssistant from '@/pages/AIAssistant';
-import Settings from '@/pages/Settings';
-import Login from '@/pages/Login';
-import NotFound from '@/pages/not-found';
+import { Toaster } from '@/components/ui/toaster.js';
+import { TooltipProvider } from '@/components/ui/tooltip.js';
+import { ThemeProvider } from '@/contexts/ThemeContext.js';
+import { AuthProvider } from '@/contexts/AuthContext.js';
+import AuthenticatedRoute from '@/components/Layout/AuthenticatedRoute.js';
+import Dashboard from '@/pages/Dashboard.js';
+import Contacts from '@/pages/Contacts.js';
+import Tasks from '@/pages/Tasks.js';
+import AIAssistant from '@/pages/AIAssistant.js';
+import Settings from '@/pages/Settings.js';
+import Login from '@/pages/Login.js';
+import NotFound from '@/pages/not-found.js';
 
-function Router() {
+function Router(): React.ReactElement {
   return (
     <Switch>
       <Route path='/login' component={Login} />
@@ -48,7 +49,7 @@ function Router() {
   );
 }
 
-function App() {
+function App(): React.ReactElement {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>

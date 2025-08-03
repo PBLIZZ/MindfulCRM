@@ -1,7 +1,7 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Button } from '@/components/ui/button.js';
+import { Separator } from '@/components/ui/separator.js';
+import { Badge } from '@/components/ui/badge.js';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,14 +12,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog';
-import { Key, Zap, CreditCard, Download, Trash2, Shield, Calendar, Brain, RefreshCw, Eye, ExternalLink, Camera, Users, Zap as ZapIcon, Clock, BarChart3 } from 'lucide-react';
+} from '@/components/ui/alert-dialog.js';
+import { Key, Zap, CreditCard, Download, Trash2, Shield, Calendar, Brain, RefreshCw, Eye, ExternalLink, Camera, Users, Clock, BarChart3 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { apiRequest } from '@/lib/queryClient';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { apiRequest } from '@/lib/queryClient.js';
+import { Checkbox } from '@/components/ui/checkbox.js';
+import { Label } from '@/components/ui/label.js';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js';
+
 
 const handleExportData = async () => {
   try {
@@ -61,10 +61,10 @@ export default function Settings() {
   const [unprocessedCount, setUnprocessedCount] = useState<number | null>(null);
   const [allowProfilePictureScraping, setAllowProfilePictureScraping] = useState(false);
   const [isUpdatingConsent, setIsUpdatingConsent] = useState(false);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  
   const [syncMonths, setSyncMonths] = useState(12);
-  const [useFreeModel, setUseFreeModel] = useState(true);
-  const [usePremiumModel, setUsePremiumModel] = useState(true);
+  const [usePremiumModel, setUsePremiumModel] = useState(false);
+  
   const [syncStats, setSyncStats] = useState<any>(null);
 
   const handleHistoricalSync = async () => {
@@ -72,7 +72,7 @@ export default function Settings() {
     try {
       const response = await apiRequest('POST', '/api/calendar/sync-historical', {
         months: syncMonths,
-        useFreeModel
+        usePremiumModel
       });
       const result = await response.json();
       alert(`Historical sync completed! ${result.message}`);
@@ -91,7 +91,6 @@ export default function Settings() {
     setIsProcessEventsLoading(true);
     try {
       const response = await apiRequest('POST', '/api/calendar/process-events', {
-        usePremiumModel,
         batchSize: 25
       });
       const result = await response.json();
@@ -131,7 +130,6 @@ export default function Settings() {
     try {
       const response = await apiRequest('GET', '/api/profile');
       const data = await response.json();
-      setUserProfile(data);
       setAllowProfilePictureScraping(data.allowProfilePictureScraping || false);
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
@@ -318,8 +316,8 @@ export default function Settings() {
               <div className='flex items-center space-x-2'>
                 <Checkbox 
                   id='use-free-model'
-                  checked={useFreeModel}
-                  onCheckedChange={(checked) => setUseFreeModel(checked === true)}
+                  checked={!usePremiumModel}
+                  onCheckedChange={(checked) => setUsePremiumModel(!checked)}
                 />
                 <Label htmlFor='use-free-model' className='text-sm'>
                   Use free model (recommended for bulk processing)

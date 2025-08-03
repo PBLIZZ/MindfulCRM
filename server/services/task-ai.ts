@@ -1,15 +1,32 @@
-import { storage } from '../storage';
-import { llmProcessor } from './llm-processor';
+import { storage } from '../storage.js';
+import { llmProcessor } from './llm-processor.js';
+import type { Task, AiSuggestion, Contact } from '../../shared/schema.js';
 import type {
-  Task,
-  InsertTask,
-  AiSuggestion,
-  InsertAiSuggestion,
-  DataProcessingJob,
-  InsertDataProcessingJob,
-  Contact,
-} from '@shared/schema';
+  AttendanceRecord,
+  AttendanceAnalysis,
+  TaskAnalysis,
+  BulkAction,
+} from '../types/llm-types.js';
 import { format } from 'date-fns';
+
+// Type guard function for BulkAction
+function isBulkAction(action: unknown): action is BulkAction {
+  if (typeof action !== 'object' || action === null) {
+    return false;
+  }
+  
+  const actionObj = action as Record<string, unknown>;
+  
+  return (
+    'type' in actionObj &&
+    'contactIds' in actionObj &&
+    typeof actionObj.type === 'string' &&
+    Array.isArray(actionObj.contactIds) &&
+    ['bulk_timeline_update', 'bulk_photo_update', 'bulk_contact_update'].includes(
+      actionObj.type
+    )
+  );
+}
 
 export class TaskAIService {
   constructor() {}
@@ -120,7 +137,7 @@ export class TaskAIService {
           aiAnalysis: {
             successCount: successfulPhotos.length,
             failureCount: failedPhotos.length,
-            sources: [...new Set(successfulPhotos.map((p) => p.source))],
+            sources: Array.from(new Set(successfulPhotos.map((p) => p.source))),
           },
           priority: 'low',
         });
@@ -172,7 +189,7 @@ export class TaskAIService {
       description: taskData.description,
       owner: 'ai_assistant',
       status: 'in_progress',
-      priority: taskData.priority || 'medium',
+      priority: taskData.priority ?? 'medium',
       dueDate: taskData.dueDate,
       projectId: taskData.projectId,
       assignedContactIds: taskData.contactIds,
@@ -240,20 +257,21 @@ export class TaskAIService {
       ) {
         await this.generateEmailDrafts(task, validContacts, aiAnalysis);
       }
-    } catch (error) {
-      console.error(`Error processing AI task ${task.id}:`, error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error(`Error processing AI task ${task.id}:`, errorMessage);
 
       await storage.updateTask(task.id, {
         status: 'cancelled',
-        aiAnalysis: { error: error.message },
+        aiAnalysis: { error: errorMessage },
       });
 
       await storage.createTaskActivity({
         taskId: task.id,
         actorType: 'ai_assistant',
         actionType: 'failed',
-        description: `AI processing failed: ${error.message}`,
-        metadata: { error: error.message },
+        description: `AI processing failed: ${errorMessage}`,
+        metadata: { error: errorMessage },
       });
     }
   }
@@ -268,7 +286,12 @@ export class TaskAIService {
         throw new Error('Suggestion not found or not approved');
       }
 
-      const action = suggestion.suggestedAction as any;
+      // Use type guard for suggestion action
+      const action = suggestion.suggestedAction;
+
+      if (!isBulkAction(action)) {
+        throw new Error('Invalid suggestion action - not a valid BulkAction');
+      }
 
       switch (action.type) {
         case 'bulk_timeline_update':
@@ -277,6 +300,9 @@ export class TaskAIService {
         case 'bulk_photo_update':
           await this.executeBulkPhotoUpdate(action);
           break;
+        case 'bulk_contact_update':
+          // Add implementation for contact updates if needed
+          throw new Error('Contact update not yet implemented');
         default:
           throw new Error(`Unknown action type: ${action.type}`);
       }
@@ -287,38 +313,42 @@ export class TaskAIService {
       });
 
       return true;
-    } catch (error) {
-      console.error('Error executing AI suggestion:', error);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Error executing AI suggestion:', errorMessage);
       await storage.updateAiSuggestion(suggestionId, {
         status: 'rejected',
-        rejectionReason: error.message,
+        rejectionReason: errorMessage,
       });
       return false;
     }
   }
 
   // Helper methods
-  private parseCSVAttendance(csvData: string): { attendees: string[]; className?: string } {
+  private parseCSVAttendance(csvData: string): AttendanceRecord {
     const lines = csvData.trim().split('\n');
-    const attendees = lines
+    const attendeeNames = lines
       .slice(1) // Skip header
       .map((line) => line.split(',')[0]?.trim())
       .filter(Boolean);
+
+    // Convert string names to AttendeeData objects
+    const attendees = attendeeNames.map((name) => ({ name }));
 
     return { attendees };
   }
 
   private async matchContactsFromAttendance(
     userId: string,
-    attendanceData: any
+    attendanceData: AttendanceRecord
   ): Promise<Contact[]> {
     const allContacts = await storage.getContactsByUserId(userId);
 
     return allContacts.filter((contact) =>
       attendanceData.attendees.some(
         (attendee) =>
-          contact.name.toLowerCase().includes(attendee.toLowerCase()) ||
-          attendee.toLowerCase().includes(contact.name.toLowerCase())
+          contact.name.toLowerCase().includes(attendee.name.toLowerCase()) ||
+          attendee.name.toLowerCase().includes(contact.name.toLowerCase())
       )
     );
   }
@@ -338,26 +368,33 @@ export class TaskAIService {
     return dateMatch ? dateMatch[1] : format(new Date(), 'yyyy-MM-dd');
   }
 
-  private async generateAttendanceAnalysis(attendanceData: any, contacts: Contact[]): Promise<any> {
+  private async generateAttendanceAnalysis(
+    attendanceData: AttendanceRecord,
+    contacts: Contact[]
+  ): Promise<AttendanceAnalysis> {
     return {
       attendeeCount: attendanceData.attendees.length,
       matchedContacts: contacts.length,
-      unmatchedAttendees: attendanceData.attendees.filter(
-        (attendee) =>
-          !contacts.some((contact) => contact.name.toLowerCase().includes(attendee.toLowerCase()))
-      ),
+      unmatchedAttendees: attendanceData.attendees
+        .filter(
+          (attendee) =>
+            !contacts.some((contact) =>
+              contact.name.toLowerCase().includes(attendee.name.toLowerCase())
+            )
+        )
+        .map((attendee) => attendee.name),
       analysis: `Processed attendance data with ${attendanceData.attendees.length} attendees, successfully matched ${contacts.length} to existing contacts.`,
     };
   }
 
-  private async generateTaskAnalysis(task: Task, contacts: Contact[]): Promise<any> {
+  private async generateTaskAnalysis(task: Task, contacts: Contact[]): Promise<TaskAnalysis> {
     const prompt = `
 Analyze this task for a wellness professional:
 
 Task: ${task.title}
 Description: ${task.description}
 Assigned to ${contacts.length} contacts:
-${contacts.map((c) => `- ${c.name} (${c.lifecycleStage || 'unknown stage'})`).join('\n')}
+${contacts.map((c) => `- ${c.name} (${c.lifecycleStage ?? 'unknown stage'})`).join('\n')}
 
 Provide analysis and recommendations for how to complete this task effectively.
 Consider the lifecycle stages of the contacts and suggest personalized approaches.
@@ -371,8 +408,8 @@ Return JSON with: {
 
     try {
       const response = await llmProcessor.processPrompt(prompt, task.userId);
-      return JSON.parse(response);
-    } catch (error) {
+      return JSON.parse(response) as TaskAnalysis;
+    } catch {
       return {
         strategy: 'Standard approach for all contacts',
         contactSegments: [
@@ -387,7 +424,7 @@ Return JSON with: {
   private async generateSubtasks(
     task: Task,
     contacts: Contact[],
-    aiAnalysis: any
+    aiAnalysis: TaskAnalysis
   ): Promise<Task[]> {
     const subtasks: Task[] = [];
 
@@ -422,7 +459,7 @@ Return JSON with: {
   private async generateEmailDrafts(
     task: Task,
     contacts: Contact[],
-    aiAnalysis: any
+    aiAnalysis: TaskAnalysis
   ): Promise<void> {
     // Create a completion task with email drafts
     const completionTask = await storage.createTask({
@@ -472,13 +509,13 @@ Return JSON with: {
     return `Personal message for ${contact.name}`;
   }
 
-  private generateEmailBody(task: Task, contact: Contact, aiAnalysis: any): string {
+  private generateEmailBody(task: Task, contact: Contact, aiAnalysis: TaskAnalysis): string {
     // Generate personalized email body
     const segment = aiAnalysis.contactSegments?.find((s) => s.contacts.includes(contact.name));
 
     return `Hi ${contact.name},
 
-${task.description || 'I wanted to reach out with a personal message.'}
+${task.description ?? 'I wanted to reach out with a personal message.'}
 
 ${segment ? segment.approach : 'I hope this message finds you well.'}
 
@@ -487,25 +524,32 @@ Your Wellness Team
 
 ---
 This email was personalized based on your relationship stage: ${
-      contact.lifecycleStage || 'valued client'
+      contact.lifecycleStage ?? 'valued client'
     }`;
   }
 
-  private async executeBulkTimelineUpdate(action: any): Promise<void> {
+  private async executeBulkTimelineUpdate(action: BulkAction): Promise<void> {
     // Implementation for bulk timeline updates
+    if (!action.eventData) {
+      throw new Error('Event data is required for timeline updates');
+    }
+
     for (const contactId of action.contactIds) {
       await storage.createInteraction({
         contactId,
         type: 'class_attendance',
-        summary: `Attended ${action.eventData.className}`,
-        notes: `Class attendance recorded from ${action.eventData.date}`,
+        content: `Attended ${action.eventData.className} - Class attendance recorded from ${action.eventData.date}`,
         timestamp: new Date(action.eventData.date),
       });
     }
   }
 
-  private async executeBulkPhotoUpdate(action: any): Promise<void> {
+  private async executeBulkPhotoUpdate(action: BulkAction): Promise<void> {
     // Implementation for bulk photo updates
+    if (!action.updates) {
+      throw new Error('Updates array is required for photo updates');
+    }
+
     for (const update of action.updates) {
       await storage.updateContact(update.contactId, {
         avatarUrl: update.photoUrl,

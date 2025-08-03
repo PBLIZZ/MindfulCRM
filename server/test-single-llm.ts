@@ -3,10 +3,13 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { openRouterService } from './services/openrouter';
-import { geminiService } from './services/gemini';
-import { mistralService } from './services/mistral';
-import { aiService } from './services/openai';
+import { createOpenRouterService } from './services/openrouter.js';
+import { storage } from './storage.js';
+import { geminiService } from './services/gemini.js';
+import { mistralService } from './services/mistral.js';
+import type { Contact, Interaction } from '../shared/schema.js';
+import type { ContactData } from './types/llm-types.js';
+
 
 async function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -15,6 +18,9 @@ async function delay(ms: number) {
 async function testSingleLLMFunction() {
   console.log('🧪 Testing Individual LLM Functions...');
   console.log('='.repeat(50));
+
+  // Create OpenRouter service instance
+  const openRouterService = createOpenRouterService(storage);
 
   try {
     // Test 1: Mistral Sentiment Analysis
@@ -53,19 +59,60 @@ async function testSingleLLMFunction() {
     console.log('\n📈 Test 4: Contact Insights Generation');
     console.log('-'.repeat(30));
     
-    const mockContactData = {
+    const mockContact: Contact = {
+      id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+      userId: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a12',
       name: "Emma Rodriguez",
       email: "emma.rodriguez@email.com",
-      sentiment: 4,
+      phone: '555-1234',
+      avatarUrl: null,
       lastContact: new Date('2025-01-30T10:00:00Z'),
-      recentInteractions: [
+      sentiment: 4,
+      engagementTrend: 'stable',
+      status: 'active',
+      notes: 'A model client.',
+      lifecycleStage: 'core_client',
+      extractedFields: null,
+      revenueData: null,
+      referralCount: 0,
+      hasGdprConsent: true,
+      gdprConsentFormPath: null,
+      socialMediaHandles: null,
+      profilePictureSource: null,
+      profilePictureScrapedAt: null,
+      sex: 'female',
+      createdAt: new Date('2024-01-01T10:00:00Z'),
+      updatedAt: new Date('2025-01-30T10:00:00Z'),
+    };
+
+    const _mockInteractions: Interaction[] = [
         {
+          id: 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13',
+          contactId: mockContact.id,
           type: "email",
+          subject: "Re: Today's session",
           content: "Thank you for today's session! The breathing exercises really helped.",
           timestamp: new Date('2025-01-30T15:30:00Z'),
-          sentiment: 5
+          source: 'gmail',
+          sourceId: 'gmail-123',
+          sentiment: 5,
+          createdAt: new Date('2025-01-30T15:30:00Z'),
         }
-      ]
+      ];
+
+    const mockContactData: ContactData = {
+      id: mockContact.id,
+      name: mockContact.name,
+      email: mockContact.email,
+      phone: mockContact.phone,
+      avatarUrl: mockContact.avatarUrl,
+      status: mockContact.status,
+      lifecycleStage: mockContact.lifecycleStage,
+      userId: mockContact.userId,
+      createdAt: mockContact.createdAt,
+      updatedAt: mockContact.updatedAt,
+      lastContact: mockContact.lastContact,
+      sentiment: mockContact.sentiment,
     };
 
     console.log('Testing with mock contact data...');

@@ -1,9 +1,9 @@
-import { useState } from 'react';
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/components/ui/button.js';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog.js';
 import {
   Form,
   FormControl,
@@ -19,18 +19,18 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+} from '@/components/ui/form.js';
+import { Input } from '@/components/ui/input.js';
+import { Textarea } from '@/components/ui/textarea.js';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { apiRequest } from '@/lib/queryClient';
+} from '@/components/ui/select.js';
+import { useToast } from '@/hooks/use-toast.js';
+import { apiRequest } from '@/lib/queryClient.js';
 
 const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -96,7 +96,7 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
       form.reset();
       onOpenChange(false);
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
         description: error.message || 'Failed to add contact. Please try again.',
@@ -119,7 +119,7 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
     
     // Clean up empty strings from standard fields
     const cleanData = Object.fromEntries(
-      Object.entries(standardFields).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
+      Object.entries(standardFields).filter(([, value]) => value !== '' && value !== null && value !== undefined)
     );
     
     // Add extracted fields if not empty

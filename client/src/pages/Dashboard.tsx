@@ -1,7 +1,7 @@
-import StatsCards from "@/components/Dashboard/StatsCards";
-import ContactCards from "@/components/Dashboard/ContactCards";
-import AIAssistant from "@/components/Dashboard/AIAssistant";
-import PhotoEnrichment from "@/components/Dashboard/PhotoEnrichment";
+import StatsCards from "@/components/Dashboard/StatsCards.js";
+import ContactCards from "@/components/Dashboard/ContactCards.js";
+import AIAssistant from "@/components/Dashboard/AIAssistant.js";
+import PhotoEnrichment from "@/components/Dashboard/PhotoEnrichment.js";
 
 export default function Dashboard() {
   return (

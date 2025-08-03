@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.js";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { ScrollArea } from "@/components/ui/scroll-area.js";
+import { Badge } from "@/components/ui/badge.js";
+
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient.js";
+import { useToast } from "@/hooks/use-toast.js";
 import {
   Bot,
   Send,
@@ -37,16 +37,7 @@ interface Insight {
   createdAt: string;
 }
 
-interface UpcomingEvent {
-  id: string;
-  summary: string;
-  startTime: string;
-  endTime: string;
-  attendees?: any[];
-  isClientRelated: boolean;
-  sessionType?: string;
-  confidence: number;
-}
+
 
 export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -85,7 +76,7 @@ export default function AIAssistant() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to get AI response. Please try again.",

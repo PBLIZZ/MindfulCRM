@@ -8,12 +8,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
+} from '@/components/ui/dialog.js';
+import { Button } from '@/components/ui/button.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Badge } from '@/components/ui/badge.js';
+import { useToast } from '@/hooks/use-toast.js';
 
 interface Tag {
   id: string;
@@ -24,7 +24,7 @@ interface Tag {
 interface TagSelectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onTagSelected: (tag: Tag | { name: string; color: string }) => void;
+  onTagSelected: (tag: { name: string; color: string }) => void;
   title: string;
   description: string;
 }

@@ -26,7 +26,7 @@ class MistralService {
   private baseURL = 'https://api.mistral.ai/v1';
 
   constructor() {
-    this.apiKey = process.env.MISTRAL_API_KEY || '';
+    this.apiKey = process.env.MISTRAL_API_KEY ?? '';
     if (!this.apiKey) {
       console.warn('MISTRAL_API_KEY not found in environment variables');
     }
@@ -38,7 +38,7 @@ class MistralService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
+          Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
           model: 'mistral-small-latest',
@@ -79,13 +79,21 @@ class MistralService {
         throw new Error(`Mistral API error: ${response.status} ${response.statusText}`);
       }
 
-      const data: MistralResponse = await response.json();
+      const data = await response.json() as MistralResponse;
       const content = data.choices[0]?.message?.content || '{"rating": 3, "confidence": 0.5}';
+
+      const result = JSON.parse(content) as {
+        rating?: unknown;
+        confidence?: unknown;
+      };
       
-      const result = JSON.parse(content);
       return {
-        rating: Math.max(1, Math.min(5, Math.round(result.rating))),
-        confidence: Math.max(0, Math.min(1, result.confidence)),
+        rating: Math.max(1, Math.min(5, Math.round(
+          typeof result.rating === 'number' ? result.rating : 3
+        ))),
+        confidence: Math.max(0, Math.min(1, 
+          typeof result.confidence === 'number' ? result.confidence : 0.5
+        )),
       };
     } catch (error) {
       console.error('Mistral sentiment analysis error:', error);

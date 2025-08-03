@@ -1,23 +1,58 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "include": [
+    "client/src/**/*",
+    "shared/**/*",
+    "server/**/*",
+    "types/**/*",
+    "scripts/**/*",
+    "tsup.config.ts",
+    "vite.config.ts",
+    "updateTypes/**/*",
+    "eslint.config.js"
+  ],
+  "exclude": [
+    "node_modules",
+    "build",
+    "dist",
+    "**/*.test.ts"
+  ],
   "compilerOptions": {
     "incremental": true,
     "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
     "noEmit": true,
-    "module": "ESNext",
+    "target": "ES2022",
+    "module": "NodeNext",
     "strict": true,
-    "lib": ["esnext", "dom", "dom.iterable"],
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "lib": [
+      "ES2022",
+      "dom",
+      "dom.iterable"
+    ],
+    "downlevelIteration": true,
     "jsx": "preserve",
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
+    // Remove this line - it's incompatible with NodeNext
+    // "allowImportingTsExtensions": true,
+    "moduleResolution": "NodeNext",
     "baseUrl": ".",
-    "types": ["node", "vite/client"],
+    "typeRoots": [
+      "./node_modules/@types",
+      "./types"
+    ],
+    "types": [
+      "node"
+    ],
     "paths": {
-      "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@/*": [
+        "./client/src/*"
+      ],
+      "@shared/*": [
+        "./shared/*"
+      ]
     }
   }
 }

@@ -1,13 +1,13 @@
-import { useAuth } from "@/contexts/AuthContext";
+import React, { useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext.js";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
-import AppLayout from "./AppLayout";
+import AppLayout from "./AppLayout.js";
 
 interface AuthenticatedRouteProps {
   children: React.ReactNode;
 }
 
-export default function AuthenticatedRoute({ children }: AuthenticatedRouteProps) {
+export default function AuthenticatedRoute({ children }: AuthenticatedRouteProps): React.ReactElement | null {
   const { user, isLoading } = useAuth();
   const [, setLocation] = useLocation();
 

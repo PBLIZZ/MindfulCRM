@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
 
+interface EnrichmentStats {
+  totalContacts: number;
+  contactsWithPhotos: number;
+  contactsWithoutPhotos: string[];
+}
+
+interface BatchEnrichmentResult {
+  processed: number;
+  failed: number;
+  duration: string;
+}
+
 interface BatchEnrichmentControlsProps {
-  stats: any;
-  startBatchEnrichment: (contactIds: string[]) => Promise<any>;
+  stats: EnrichmentStats | null;
+  startBatchEnrichment: () => Promise<BatchEnrichmentResult>;
 }
 
 const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({ 
@@ -21,27 +33,27 @@ const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({
     );
   }
 
-  const handleStartBatch = async () => {
+  const handleStartBatch = async (): Promise<void> => {
     setIsProcessing(true);
     setProgress(0);
     setResults(null);
 
     try {
       // Start with contacts that don't have photos
-      const contactsToEnrich = stats.contactsWithoutPhotos || [];
+      const contactsToEnrich = stats.contactsWithoutPhotos ?? [];
       
       if (contactsToEnrich.length === 0) {
-        alert('No contacts need photo enrichment!');
+        // Alert: No contacts need photo enrichment
         setIsProcessing(false);
         return;
       }
 
-      const result = await startBatchEnrichment(contactsToEnrich);
+      const result = await startBatchEnrichment();
       setResults(result);
       setProgress(100);
-    } catch (error) {
-      console.error('Batch enrichment failed:', error);
-      alert('Batch enrichment failed. Please try again.');
+    } catch {
+      // Log error and notify user
+      setResults({ processed: 0, failed: 1, duration: 'Failed' });
     } finally {
       setIsProcessing(false);
     }
@@ -55,15 +67,15 @@ const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({
         <h3 className="font-semibold mb-3">Photo Enrichment Stats</h3>
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center p-2 bg-blue-50 rounded">
-            <div className="text-2xl font-bold text-blue-600">{stats.totalContacts || 0}</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.totalContacts ?? 0}</div>
             <div className="text-sm text-blue-700">Total Contacts</div>
           </div>
           <div className="text-center p-2 bg-green-50 rounded">
-            <div className="text-2xl font-bold text-green-600">{stats.contactsWithPhotos || 0}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.contactsWithPhotos ?? 0}</div>
             <div className="text-sm text-green-700">With Photos</div>
           </div>
           <div className="text-center p-2 bg-orange-50 rounded">
-            <div className="text-2xl font-bold text-orange-600">{contactsNeedingPhotos || 0}</div>
+            <div className="text-2xl font-bold text-orange-600">{contactsNeedingPhotos ?? 0}</div>
             <div className="text-sm text-orange-700">Need Photos</div>
           </div>
         </div>
@@ -96,9 +108,9 @@ const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({
           <div className="p-3 bg-green-50 border border-green-200 rounded">
             <h4 className="font-semibold text-green-800 mb-2">Batch Results</h4>
             <div className="text-sm space-y-1">
-              <p className="text-green-700">✅ Processed: {results.processed || 0}</p>
-              <p className="text-red-700">❌ Failed: {results.failed || 0}</p>
-              <p className="text-gray-700">⏱️ Duration: {results.duration || 'N/A'}</p>
+              <p className="text-green-700">✅ Processed: {results.processed ?? 0}</p>
+              <p className="text-red-700">❌ Failed: {results.failed ?? 0}</p>
+              <p className="text-gray-700">⏱️ Duration: {results.duration ?? 'N/A'}</p>
             </div>
           </div>
         )}

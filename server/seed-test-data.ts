@@ -3,18 +3,17 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { db } from './db';
+import { db } from './db.js';
 import {
   users,
   contacts,
   calendarEvents,
   interactions,
-  lifecycleStageEnum,
   type InsertUser,
   type InsertContact,
   type InsertCalendarEvent,
   type InsertInteraction,
-} from '@shared/schema';
+} from '../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
 // Test user data
@@ -92,15 +91,15 @@ const testContacts: Omit<InsertContact, 'userId'>[] = [
 ];
 
 // Generate realistic calendar events that would come from Google Calendar sync
-function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<InsertCalendarEvent, 'userId'>[] {
+function generateCalendarEvents(): Omit<InsertCalendarEvent, 'userId'>[] {
   const events: Omit<InsertCalendarEvent, 'userId'>[] = [];
-  const now = new Date();
-  
+
   // Client session events
   events.push({
     googleEventId: 'event-001-emma-session',
     summary: 'Emma Rodriguez - Anxiety Management Session',
-    description: 'Weekly session focusing on breathing techniques and cognitive restructuring. Emma has been making great progress with her social anxiety.',
+    description:
+      'Weekly session focusing on breathing techniques and cognitive restructuring. Emma has been making great progress with her social anxiety.',
     startTime: new Date('2025-02-03T10:00:00Z'),
     endTime: new Date('2025-02-03T11:00:00Z'),
     location: 'Wellness Center - Room 2',
@@ -112,7 +111,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
     rawData: {
       id: 'event-001-emma-session',
       summary: 'Emma Rodriguez - Anxiety Management Session',
-      description: 'Weekly session focusing on breathing techniques and cognitive restructuring. Emma has been making great progress with her social anxiety.',
+      description:
+        'Weekly session focusing on breathing techniques and cognitive restructuring. Emma has been making great progress with her social anxiety.',
       start: { dateTime: '2025-02-03T10:00:00Z' },
       end: { dateTime: '2025-02-03T11:00:00Z' },
       location: 'Wellness Center - Room 2',
@@ -123,7 +123,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
   events.push({
     googleEventId: 'event-002-michael-consultation',
     summary: 'Michael Chen - Initial Consultation',
-    description: 'First consultation to assess stress levels and develop personalized wellness plan. Michael mentioned high work pressure and burnout symptoms.',
+    description:
+      'First consultation to assess stress levels and develop personalized wellness plan. Michael mentioned high work pressure and burnout symptoms.',
     startTime: new Date('2025-02-04T14:30:00Z'),
     endTime: new Date('2025-02-04T15:30:00Z'),
     location: 'Virtual - Zoom',
@@ -135,7 +136,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
     rawData: {
       id: 'event-002-michael-consultation',
       summary: 'Michael Chen - Initial Consultation',
-      description: 'First consultation to assess stress levels and develop personalized wellness plan. Michael mentioned high work pressure and burnout symptoms.',
+      description:
+        'First consultation to assess stress levels and develop personalized wellness plan. Michael mentioned high work pressure and burnout symptoms.',
       start: { dateTime: '2025-02-04T14:30:00Z' },
       end: { dateTime: '2025-02-04T15:30:00Z' },
       location: 'Virtual - Zoom',
@@ -146,7 +148,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
   events.push({
     googleEventId: 'event-003-lisa-followup',
     summary: 'Lisa Williams - Check-in Call',
-    description: 'Follow-up call to check on Lisa after missed appointments. Concerned about her recent challenges and want to offer support.',
+    description:
+      'Follow-up call to check on Lisa after missed appointments. Concerned about her recent challenges and want to offer support.',
     startTime: new Date('2025-02-05T09:00:00Z'),
     endTime: new Date('2025-02-05T09:30:00Z'),
     location: 'Phone Call',
@@ -158,7 +161,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
     rawData: {
       id: 'event-003-lisa-followup',
       summary: 'Lisa Williams - Check-in Call',
-      description: 'Follow-up call to check on Lisa after missed appointments. Concerned about her recent challenges and want to offer support.',
+      description:
+        'Follow-up call to check on Lisa after missed appointments. Concerned about her recent challenges and want to offer support.',
       start: { dateTime: '2025-02-05T09:00:00Z' },
       end: { dateTime: '2025-02-05T09:30:00Z' },
       location: 'Phone Call',
@@ -169,7 +173,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
   events.push({
     googleEventId: 'event-004-group-mindfulness',
     summary: 'Mindfulness Workshop - Group Session',
-    description: 'Monthly group mindfulness workshop. Focus on meditation techniques and stress reduction. Regular attendees include James and Rachel.',
+    description:
+      'Monthly group mindfulness workshop. Focus on meditation techniques and stress reduction. Regular attendees include James and Rachel.',
     startTime: new Date('2025-02-06T18:00:00Z'),
     endTime: new Date('2025-02-06T19:30:00Z'),
     location: 'Community Center - Main Hall',
@@ -185,7 +190,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
     rawData: {
       id: 'event-004-group-mindfulness',
       summary: 'Mindfulness Workshop - Group Session',
-      description: 'Monthly group mindfulness workshop. Focus on meditation techniques and stress reduction. Regular attendees include James and Rachel.',
+      description:
+        'Monthly group mindfulness workshop. Focus on meditation techniques and stress reduction. Regular attendees include James and Rachel.',
       start: { dateTime: '2025-02-06T18:00:00Z' },
       end: { dateTime: '2025-02-06T19:30:00Z' },
       location: 'Community Center - Main Hall',
@@ -223,7 +229,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
   events.push({
     googleEventId: 'event-006-admin-planning',
     summary: 'Business Planning Session',
-    description: 'Monthly business review and planning. Review client progress, update programs, and plan marketing activities.',
+    description:
+      'Monthly business review and planning. Review client progress, update programs, and plan marketing activities.',
     startTime: new Date('2025-02-08T09:00:00Z'),
     endTime: new Date('2025-02-08T11:00:00Z'),
     location: 'Home Office',
@@ -235,7 +242,8 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
     rawData: {
       id: 'event-006-admin-planning',
       summary: 'Business Planning Session',
-      description: 'Monthly business review and planning. Review client progress, update programs, and plan marketing activities.',
+      description:
+        'Monthly business review and planning. Review client progress, update programs, and plan marketing activities.',
       start: { dateTime: '2025-02-08T09:00:00Z' },
       end: { dateTime: '2025-02-08T11:00:00Z' },
       location: 'Home Office',
@@ -246,16 +254,19 @@ function generateCalendarEvents(userId: string, contactEmails: string[]): Omit<I
 }
 
 // Generate email-like interactions that would come from Gmail sync
-function generateInteractions(contactIds: { id: string; email: string }[]): Omit<InsertInteraction, 'contactId'>[] {
+function generateInteractions(
+  contactIds: { id: string; email: string }[]
+): Omit<InsertInteraction, 'contactId'>[] {
   const interactions: Omit<InsertInteraction, 'contactId'>[] = [];
 
   // Emma's interactions - positive progress
-  const emmaContact = contactIds.find(c => c.email === 'emma.rodriguez@email.com');
+  const emmaContact = contactIds.find((c) => c.email === 'emma.rodriguez@email.com');
   if (emmaContact) {
     interactions.push({
       type: 'email',
-      subject: 'Thank you for today\'s session!',
-      content: 'Hi Dr. Thompson, I wanted to thank you for today\'s session. The breathing exercises you taught me really helped during my presentation at work yesterday. I\'m feeling much more confident about managing my anxiety. Looking forward to our next session!',
+      subject: "Thank you for today's session!",
+      content:
+        "Hi Dr. Thompson, I wanted to thank you for today's session. The breathing exercises you taught me really helped during my presentation at work yesterday. I'm feeling much more confident about managing my anxiety. Looking forward to our next session!",
       timestamp: new Date('2025-01-30T15:30:00Z'),
       source: 'gmail',
       sourceId: 'gmail-msg-001',
@@ -264,12 +275,13 @@ function generateInteractions(contactIds: { id: string; email: string }[]): Omit
   }
 
   // Michael's interaction - neutral/concerned
-  const michaelContact = contactIds.find(c => c.email === 'michael.chen@techcorp.com');
+  const michaelContact = contactIds.find((c) => c.email === 'michael.chen@techcorp.com');
   if (michaelContact) {
     interactions.push({
       type: 'email',
       subject: 'Question about stress management techniques',
-      content: 'Dr. Thompson, I\'ve been trying the mindfulness exercises you suggested, but I\'m finding it hard to focus during meditation. My mind keeps racing about work deadlines. Is this normal? Should I be worried that it\'s not working for me?',
+      content:
+        "Dr. Thompson, I've been trying the mindfulness exercises you suggested, but I'm finding it hard to focus during meditation. My mind keeps racing about work deadlines. Is this normal? Should I be worried that it's not working for me?",
       timestamp: new Date('2025-01-29T20:45:00Z'),
       source: 'gmail',
       sourceId: 'gmail-msg-002',
@@ -278,12 +290,13 @@ function generateInteractions(contactIds: { id: string; email: string }[]): Omit
   }
 
   // Lisa's interaction - concerning
-  const lisaContact = contactIds.find(c => c.email === 'lisa.williams@gmail.com');
+  const lisaContact = contactIds.find((c) => c.email === 'lisa.williams@gmail.com');
   if (lisaContact) {
     interactions.push({
       type: 'email',
       subject: 'Sorry for missing appointments',
-      content: 'Dr. Thompson, I\'m really sorry for missing our last two sessions. Things have been incredibly difficult at home - my mom was diagnosed with dementia and I\'ve been overwhelmed trying to coordinate her care while working full time. I know I need the support now more than ever, but I just can\'t seem to manage everything.',
+      content:
+        "Dr. Thompson, I'm really sorry for missing our last two sessions. Things have been incredibly difficult at home - my mom was diagnosed with dementia and I've been overwhelmed trying to coordinate her care while working full time. I know I need the support now more than ever, but I just can't seem to manage everything.",
       timestamp: new Date('2025-01-15T22:15:00Z'),
       source: 'gmail',
       sourceId: 'gmail-msg-003',
@@ -292,12 +305,13 @@ function generateInteractions(contactIds: { id: string; email: string }[]): Omit
   }
 
   // James's interaction - very positive
-  const jamesContact = contactIds.find(c => c.email === 'james.parker@consulting.biz');
+  const jamesContact = contactIds.find((c) => c.email === 'james.parker@consulting.biz');
   if (jamesContact) {
     interactions.push({
       type: 'email',
       subject: 'Amazing transformation - thank you!',
-      content: 'Dr. Thompson, I can\'t thank you enough for the incredible journey we\'ve been on together. Six months ago I was burned out, anxious, and frankly miserable. Today I gave a presentation to 200 people and felt completely at peace. My wife says I\'m like a different person. I\'ve already referred three colleagues to you - they desperately need what you offer.',
+      content:
+        "Dr. Thompson, I can't thank you enough for the incredible journey we've been on together. Six months ago I was burned out, anxious, and frankly miserable. Today I gave a presentation to 200 people and felt completely at peace. My wife says I'm like a different person. I've already referred three colleagues to you - they desperately need what you offer.",
       timestamp: new Date('2025-01-28T19:00:00Z'),
       source: 'gmail',
       sourceId: 'gmail-msg-004',
@@ -306,12 +320,13 @@ function generateInteractions(contactIds: { id: string; email: string }[]): Omit
   }
 
   // Rachel's interaction - curious but hesitant
-  const rachelContact = contactIds.find(c => c.email === 'rachel.davis@university.edu');
+  const rachelContact = contactIds.find((c) => c.email === 'rachel.davis@university.edu');
   if (rachelContact) {
     interactions.push({
       type: 'email',
       subject: 'Questions about your mindfulness program',
-      content: 'Dr. Thompson, James Parker recommended your services. As a psychology professor, I\'m familiar with mindfulness research but have never tried it personally. I\'m dealing with academic stress and would like to learn more about your approach. Do you offer any programs specifically for academics? What would be involved in getting started?',
+      content:
+        "Dr. Thompson, James Parker recommended your services. As a psychology professor, I'm familiar with mindfulness research but have never tried it personally. I'm dealing with academic stress and would like to learn more about your approach. Do you offer any programs specifically for academics? What would be involved in getting started?",
       timestamp: new Date('2025-01-31T14:20:00Z'),
       source: 'gmail',
       sourceId: 'gmail-msg-005',
@@ -346,24 +361,27 @@ async function seedTestData() {
     // Clear existing test data for this user
     console.log('Clearing existing test data...');
     // Get all contacts for this user first
-    const existingContacts = await db.select({ id: contacts.id }).from(contacts).where(eq(contacts.userId, user.id));
-    
+    const existingContacts = await db
+      .select({ id: contacts.id })
+      .from(contacts)
+      .where(eq(contacts.userId, user.id));
+
     // Delete interactions first (they reference contacts)
     for (const contact of existingContacts) {
       await db.delete(interactions).where(eq(interactions.contactId, contact.id));
     }
-    
+
     // Then delete calendar events and contacts
     await db.delete(calendarEvents).where(eq(calendarEvents.userId, user.id));
     await db.delete(contacts).where(eq(contacts.userId, user.id));
 
     // Insert test contacts
     console.log('Creating test contacts...');
-    const contactsWithUserId = testContacts.map(contact => ({
+    const contactsWithUserId = testContacts.map((contact) => ({
       ...contact,
       userId: user.id,
     }));
-    
+
     const insertedContacts = await db
       .insert(contacts)
       .values(contactsWithUserId)
@@ -373,26 +391,25 @@ async function seedTestData() {
 
     // Insert calendar events
     console.log('Creating calendar events...');
-    const contactEmails = insertedContacts.map(c => c.email);
-    const calendarEventsData = generateCalendarEvents(user.id, contactEmails).map(event => ({
+    const calendarEventsData = generateCalendarEvents().map((event) => ({
       ...event,
       userId: user.id,
     }));
-    
+
     await db.insert(calendarEvents).values(calendarEventsData);
     console.log(`Created ${calendarEventsData.length} calendar events`);
 
     // Insert interactions
     console.log('Creating interactions...');
     const interactionsData = generateInteractions(insertedContacts);
-    
+
     for (const interaction of interactionsData) {
-      const contact = insertedContacts.find(c => {
+      const contact = insertedContacts.find(() => {
         // Find contact by checking which interactions belong to which contact
         // This is a simple mapping - in real implementation you'd have proper relations
         return true; // We'll assign based on order for simplicity
       });
-      
+
       if (contact) {
         await db.insert(interactions).values({
           ...interaction,
@@ -423,7 +440,6 @@ async function seedTestData() {
     console.log('1. Run the LLM processor to analyze calendar events');
     console.log('2. Check the frontend to see processed insights');
     console.log('3. Test OpenRouter/Gemini integration');
-
   } catch (error) {
     console.error('❌ Error seeding test data:', error);
     throw error;

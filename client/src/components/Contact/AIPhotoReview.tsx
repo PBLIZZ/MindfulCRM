@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/button.js'
 import { 
   Dialog, 
   DialogContent, 
@@ -8,11 +8,11 @@ import {
   DialogFooter, 
   DialogHeader, 
   DialogTitle 
-} from '@/components/ui/dialog'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ScrollArea } from '@/components/ui/scroll-area'
+} from '@/components/ui/dialog.js'
+import { Card, CardContent } from '@/components/ui/card.js'
+import { Badge } from '@/components/ui/badge.js'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js'
+import { ScrollArea } from '@/components/ui/scroll-area.js'
 import { 
   Loader2, 
   CheckCircle, 
@@ -23,9 +23,9 @@ import {
   Mail,
   Building
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
-import { aiPhotoFinder, type ContactInfo, type PhotoSuggestion } from '@/services/aiPhotoFinder'
-import type { Contact } from './ContactsTable'
+import { useToast } from '@/hooks/use-toast.js'
+import { aiPhotoFinder, type ContactInfo, type PhotoSuggestion } from '@/services/aiPhotoFinder.js'
+import type { Contact } from './ContactsTable.js'
 
 interface AIPhotoReviewProps {
   contact: Contact | null
@@ -115,7 +115,7 @@ export function AIPhotoReview({
     onError: (error: Error) => {
       toast({
         title: 'Download failed',
-        description: error.message,
+        description: error.message ?? 'An unknown error occurred',
         variant: 'destructive'
       })
     }
@@ -129,9 +129,9 @@ export function AIPhotoReview({
       const contactInfo: ContactInfo = {
         name: contact.name,
         email: contact.email,
-        company: contact.extractedFields?.company,
-        linkedinUrl: contact.extractedFields?.linkedinUrl,
-        jobTitle: contact.extractedFields?.jobTitle
+        company: contact.extractedFields?.company as string | undefined,
+        linkedinUrl: contact.extractedFields?.linkedinUrl as string | undefined,
+        jobTitle: contact.extractedFields?.jobTitle as string | undefined
       }
 
       const result = await aiPhotoFinder.findPhotoSuggestions(contactInfo)
@@ -166,7 +166,7 @@ export function AIPhotoReview({
     if (open && suggestions.length === 0 && contact) {
       searchForPhotos()
     }
-  }, [open, contact])
+  }, [ contact])
 
   const handleApplyPhoto = (suggestion: PhotoSuggestion) => {
     setSelectedSuggestion(suggestion)

@@ -1,12 +1,20 @@
 import { google } from 'googleapis';
-import { storage } from '../storage';
-import type { User } from '@shared/schema';
+import type { calendar_v3 } from 'googleapis';
+import { storage } from '../storage.js';
+import type { User } from '../../shared/schema.js';
+
+// Extended event type that properly extends Google's Schema$Event
+type ExtendedCalendarEvent = calendar_v3.Schema$Event & {
+  calendarId?: string | null;
+  calendarName?: string | null;
+  calendarColor?: string | null;
+};
 
 export class GoogleService {
   private getOAuth2Client(user: User) {
     const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
+      process.env.GOOGLE_OAUTH_CLIENT_ID ?? process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? process.env.GOOGLE_CLIENT_SECRET,
       process.env.GOOGLE_CALLBACK_URL
     );
 
@@ -27,10 +35,10 @@ export class GoogleService {
       const response = await gmail.users.messages.list({
         userId: 'me',
         maxResults: 50,
-        q: 'newer_than:7d'
+        q: 'newer_than:7d',
       });
 
-      const messages = response.data.messages || [];
+      const messages = response.data.messages ?? [];
 
       for (const message of messages) {
         if (!message.id) continue;
@@ -40,28 +48,28 @@ export class GoogleService {
           id: message.id,
         });
 
-        const headers = messageDetail.data.payload?.headers || [];
-        const from = headers.find((h: any) => h.name === 'From')?.value || '';
-        const subject = headers.find((h: any) => h.name === 'Subject')?.value || '';
-        const date = headers.find((h: any) => h.name === 'Date')?.value;
+        const headers = messageDetail.data.payload?.headers ?? [];
+        const from = headers.find((h) => h.name === 'From')?.value ?? '';
+        const subject = headers.find((h) => h.name === 'Subject')?.value ?? '';
+        const date = headers.find((h) => h.name === 'Date')?.value;
 
         // Extract email address
-        const emailMatch = from.match(/<(.+?)>/) || from.match(/(\S+@\S+)/);
-        const email = emailMatch ? emailMatch[1] || emailMatch[0] : '';
+        const emailMatch = from.match(/<(.+?)>/) ?? from.match(/(\S+@\S+)/);
+        const email = emailMatch ? emailMatch[1] ?? emailMatch[0] : '';
 
         if (!email) continue;
 
         // Find or create contact
         const contacts = await storage.getContactsByUserId(user.id);
-        let contact = contacts.find(c => c.email === email);
+        let contact = contacts.find((c) => c.email === email);
 
         if (!contact) {
-          const name = from.replace(/<.*?>/, '').trim() || email;
+          const name = from.replace(/<.*?>/, '').trim() ?? email;
           contact = await storage.createContact({
             userId: user.id,
             name,
             email,
-            lastContact: new Date()
+            lastContact: new Date(),
           });
         }
 
@@ -70,71 +78,78 @@ export class GoogleService {
           contactId: contact.id,
           type: 'email',
           subject,
-          content: subject || 'Email interaction',
+          content: subject ?? 'Email interaction',
           timestamp: date ? new Date(date) : new Date(),
           source: 'gmail',
-          sourceId: message.id
+          sourceId: message.id,
         });
       }
 
       await storage.updateSyncStatus(user.id, 'gmail', {
         lastSync: new Date(),
-        status: 'success'
+        status: 'success',
       });
     } catch (error) {
       console.error('Gmail sync error:', error);
       await storage.updateSyncStatus(user.id, 'gmail', {
         lastSync: new Date(),
         status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
 
-  async syncCalendar(user: User, options?: {
-    startDate?: Date;
-    endDate?: Date;
-    syncType?: 'initial' | 'incremental';
-  }): Promise<void> {
+  async syncCalendar(
+    user: User,
+    options?: {
+      startDate?: Date;
+      endDate?: Date;
+      syncType?: 'initial' | 'incremental';
+    }
+  ): Promise<void> {
     try {
       const oauth2Client = this.getOAuth2Client(user);
       const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
       const now = new Date();
-      const syncType = options?.syncType || 'incremental';
-      
+      const syncType = options?.syncType ?? 'incremental';
+
       // Set date ranges based on sync type
       let startDate: Date;
       let endDate: Date;
-      
+
       if (syncType === 'initial') {
         // Initial sync: 1 year back, 6 months forward
-        startDate = options?.startDate || new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-        endDate = options?.endDate || new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+        startDate = options?.startDate ?? new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+        endDate = options?.endDate ?? new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
       } else {
         // Incremental sync: 7 days back (for updates), 6 months forward
-        startDate = options?.startDate || new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        endDate = options?.endDate || new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+        startDate = options?.startDate ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        endDate = options?.endDate ?? new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
       }
 
-      console.log(`${syncType} sync for user ${user.email} from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+      console.log(
+        `${syncType} sync for user ${
+          user.email
+        } from ${startDate.toISOString()} to ${endDate.toISOString()}`
+      );
 
       // First, get all user's calendars
       const calendarListResponse = await calendar.calendarList.list();
-      const calendars = calendarListResponse.data.items || [];
+      const calendars = calendarListResponse.data.items ?? [];
       console.log(`Found ${calendars.length} calendars for user`);
 
-      let allEvents: any[] = [];
+      let allEvents: ExtendedCalendarEvent[] = [];
       const calendarMetadata: { [key: string]: { name: string; color: string } } = {};
 
       // Fetch events from each calendar
       for (const cal of calendars) {
         if (!cal.id) continue;
-        
+
         // Store calendar metadata
         calendarMetadata[cal.id] = {
-          name: cal.summary || cal.id,
-          color: cal.backgroundColor || cal.colorId || '#4285f4' // Default Google blue
+          name: cal.summary ?? cal.id,
+          color: cal.backgroundColor ?? cal.colorId ?? '#4285f4', // Default Google blue
         };
 
         try {
@@ -147,11 +162,11 @@ export class GoogleService {
             maxResults: 2500,
           });
 
-          const calendarEvents = (response.data.items || []).map(event => ({
+          const calendarEvents = (response.data.items ?? []).map((event) => ({
             ...event,
             calendarId: cal.id,
-            calendarName: cal.summary || cal.id,
-            calendarColor: cal.backgroundColor || cal.colorId || '#4285f4'
+            calendarName: cal.summary ?? cal.id,
+            calendarColor: cal.backgroundColor ?? cal.colorId ?? '#4285f4',
           }));
 
           allEvents = allEvents.concat(calendarEvents);
@@ -172,11 +187,15 @@ export class GoogleService {
 
         // Check if we already have this event
         const existingEvent = await storage.getCalendarEventByGoogleId(user.id, event.id);
-        
+
         // Determine meeting type based on event properties
         let meetingType = 'in-person';
-        if (event.location?.includes('zoom') || event.location?.includes('meet.google.com') || 
-            event.description?.includes('zoom') || event.description?.includes('meet.google.com')) {
+        if (
+          event.location?.includes('zoom') ||
+          event.location?.includes('meet.google.com') ||
+          event.description?.includes('zoom') ||
+          event.description?.includes('meet.google.com')
+        ) {
           meetingType = 'video';
         } else if (event.location?.includes('phone') || event.description?.includes('phone')) {
           meetingType = 'phone';
@@ -186,29 +205,37 @@ export class GoogleService {
           userId: user.id,
           googleEventId: event.id,
           rawData: event, // Store the complete Google Calendar event JSON
-          summary: event.summary || null,
-          description: event.description || null,
-          startTime: event.start?.dateTime ? new Date(event.start.dateTime) : 
-                    event.start?.date ? new Date(event.start.date) : null,
-          endTime: event.end?.dateTime ? new Date(event.end.dateTime) : 
-                  event.end?.date ? new Date(event.end.date) : null,
-          attendees: event.attendees || null,
-          location: event.location || null,
+          summary: event.summary ?? null,
+          description: event.description ?? null,
+          startTime: event.start?.dateTime
+            ? new Date(event.start.dateTime)
+            : event.start?.date
+            ? new Date(event.start.date)
+            : null,
+          endTime: event.end?.dateTime
+            ? new Date(event.end.dateTime)
+            : event.end?.date
+            ? new Date(event.end.date)
+            : null,
+          attendees: event.attendees ?? null,
+          location: event.location ?? null,
           meetingType,
           processed: false, // Will be processed by LLM later
           extractedData: null,
           contactId: null, // Will be determined during LLM processing
           // Calendar metadata
-          calendarId: event.calendarId || null,
-          calendarName: event.calendarName || null,
-          calendarColor: event.calendarColor || null,
+          calendarId: event.calendarId ?? null,
+          calendarName: event.calendarName ?? null,
+          calendarColor: event.calendarColor ?? null,
         };
 
         if (existingEvent) {
           // Update existing event if the raw data has changed OR if calendar metadata is missing
-          const needsUpdate = JSON.stringify(existingEvent.rawData) !== JSON.stringify(event) ||
-                            !existingEvent.calendarName || !existingEvent.calendarColor;
-          
+          const needsUpdate =
+            JSON.stringify(existingEvent.rawData) !== JSON.stringify(event) ||
+            !existingEvent.calendarName ||
+            !existingEvent.calendarColor;
+
           if (needsUpdate) {
             await storage.updateCalendarEvent(existingEvent.id, {
               rawData: event,
@@ -240,21 +267,20 @@ export class GoogleService {
 
             // Find or create contact
             const contacts = await storage.getContactsByUserId(user.id);
-            let contact = contacts.find(c => c.email === attendee.email);
+            let contact = contacts.find((c) => c.email === attendee.email);
 
-            if (!contact) {
-              contact = await storage.createContact({
-                userId: user.id,
-                name: attendee.displayName || attendee.email,
-                email: attendee.email,
-                lastContact: new Date()
-              });
-            }
+            // Use nullish coalescing assignment for cleaner code
+            contact ??= await storage.createContact({
+              userId: user.id,
+              name: attendee.displayName ?? attendee.email,
+              email: attendee.email,
+              lastContact: new Date(),
+            });
 
             // Create interaction (check for duplicates by sourceId)
             const existingInteractions = await storage.getInteractionsByContactId(contact.id);
             const hasExistingInteraction = existingInteractions.some(
-              interaction => interaction.sourceId === event.id
+              (interaction) => interaction.sourceId === event.id
             );
 
             if (!hasExistingInteraction) {
@@ -262,28 +288,32 @@ export class GoogleService {
                 contactId: contact.id,
                 type: 'meeting',
                 subject: event.summary,
-                content: `Meeting: ${event.summary}${event.description ? ` - ${event.description}` : ''}`,
+                content: `Meeting: ${event.summary}${
+                  event.description ? ` - ${event.description}` : ''
+                }`,
                 timestamp: event.start?.dateTime ? new Date(event.start.dateTime) : new Date(),
                 source: 'calendar',
-                sourceId: event.id
+                sourceId: event.id,
               });
             }
           }
         }
       }
 
-      console.log(`Calendar sync completed: ${newEventsCount} new events, ${updatedEventsCount} updated events`);
+      console.log(
+        `Calendar sync completed: ${newEventsCount} new events, ${updatedEventsCount} updated events`
+      );
 
       await storage.updateSyncStatus(user.id, 'calendar', {
         lastSync: new Date(),
-        status: 'success'
+        status: 'success',
       });
     } catch (error) {
       console.error('Calendar sync error:', error);
       await storage.updateSyncStatus(user.id, 'calendar', {
         lastSync: new Date(),
         status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }
@@ -298,10 +328,10 @@ export class GoogleService {
         q: "mimeType='application/pdf' or mimeType='application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType='text/plain'",
         fields: 'files(id, name, mimeType, modifiedTime)',
         orderBy: 'modifiedTime desc',
-        pageSize: 50
+        pageSize: 50,
       });
 
-      const files = response.data.files || [];
+      const files = response.data.files ?? [];
 
       for (const file of files) {
         if (!file.id || !file.name) continue;
@@ -315,29 +345,29 @@ export class GoogleService {
 
         // Check if document already exists
         const existingDocs = await storage.getDocumentsByContactId(contact.id);
-        const exists = existingDocs.some(doc => doc.driveId === file.id);
+        const exists = existingDocs.some((doc) => doc.driveId === file.id);
 
         if (!exists) {
           await storage.createDocument({
             contactId: contact.id,
             name: file.name,
-            type: file.mimeType || 'unknown',
+            type: file.mimeType ?? 'unknown',
             driveId: file.id,
-            url: `https://drive.google.com/file/d/${file.id}/view`
+            url: `https://drive.google.com/file/d/${file.id}/view`,
           });
         }
       }
 
       await storage.updateSyncStatus(user.id, 'drive', {
         lastSync: new Date(),
-        status: 'success'
+        status: 'success',
       });
     } catch (error) {
       console.error('Drive sync error:', error);
       await storage.updateSyncStatus(user.id, 'drive', {
         lastSync: new Date(),
         status: 'error',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   }

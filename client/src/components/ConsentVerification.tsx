@@ -1,8 +1,17 @@
 import React from 'react';
-import { updateUserConsent } from '../api/photoEnrichmentApi';
+import { updateUserConsent } from '../api/photoEnrichmentApi.js';
+
+interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  allowProfilePictureScraping: boolean;
+  gdprConsentDate?: string;
+  gdprConsentVersion: string;
+}
 
 interface ConsentVerificationProps {
-  profile: any;
+  profile: UserProfile;
 }
 
 const ConsentVerification: React.FC<ConsentVerificationProps> = ({ profile }) => {
@@ -16,7 +25,7 @@ const ConsentVerification: React.FC<ConsentVerificationProps> = ({ profile }) =>
 
   const hasConsent = profile.allowProfilePictureScraping || false;
 
-  const handleGrantConsent = async () => {
+  const handleGrantConsent = async (): Promise<void> => {
     try {
       await updateUserConsent(true);
       window.location.reload(); // Refresh to update UI

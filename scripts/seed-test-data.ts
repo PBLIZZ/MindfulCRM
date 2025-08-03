@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 
 import dotenv from 'dotenv';
-import { db } from '../server/db';
-import * as schema from '@shared/schema';
+import { db } from '../server/db.js';
+import * as schema from '../shared/schema.js';
 import { eq } from 'drizzle-orm';
 
 dotenv.config();

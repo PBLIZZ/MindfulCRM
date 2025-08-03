@@ -1,31 +1,32 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Mail, Phone, Calendar, MessageSquare, Edit } from 'lucide-react';
-import { enrichSingleContact } from '@/api/photoEnrichmentApi';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AddContactDialog from '@/components/Contact/AddContactDialog';
-import ContactDetail from '@/components/Contact/ContactDetail';
-import { ContactsTable } from '@/components/Contact/ContactsTable';
-import { ContactPhotoUpload } from '@/components/Contact/ContactPhotoUpload';
-import { AIPhotoReview } from '@/components/Contact/AIPhotoReview';
-import { DeleteContactDialog } from '@/components/Contact/DeleteContactDialog';
-import { EditContactModal } from '@/components/Contact/EditContactModal';
-import { TagSelectionDialog } from '@/components/Contact/TagSelectionDialog';
-import { useToast } from '@/hooks/use-toast';
-import type { Contact } from '@/components/Contact/ContactsTable';
+import { enrichSingleContact } from '@/api/photoEnrichmentApi.js';
+import { Button } from '@/components/ui/button.js';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Badge } from '@/components/ui/badge.js';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
+import AddContactDialog from '@/components/Contact/AddContactDialog.js';
+import ContactDetail from '@/components/Contact/ContactDetail.js';
+import { ContactsTable } from '@/components/Contact/ContactsTable.js';
+import { ContactPhotoUpload } from '@/components/Contact/ContactPhotoUpload.js';
+import { AIPhotoReview } from '@/components/Contact/AIPhotoReview.js';
+import { DeleteContactDialog } from '@/components/Contact/DeleteContactDialog.js';
+import { EditContactModal } from '@/components/Contact/EditContactModal.js';
+import { TagSelectionDialog } from '@/components/Contact/TagSelectionDialog.js';
+import { useToast } from '@/hooks/use-toast.js';
+import type { Contact } from '@/components/Contact/ContactsTable.js';
 
 export default function Contacts() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [photoUploadContact, setPhotoUploadContact] = useState<Contact | null>(null);
-  const [aiPhotoReviewContact, setAiPhotoReviewContact] = useState<Contact | null>(null);
+  
   const [deleteContact, setDeleteContact] = useState<Contact | null>(null);
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [tagAction, setTagAction] = useState<{ type: 'add' | 'remove'; contactIds: string[] } | null>(null);
+  const [photoUploadContact, setPhotoUploadContact] = useState<Contact | null>(null);
+  const [aiPhotoReviewContact, setAiPhotoReviewContact] = useState<Contact | null>(null);
   const { toast } = useToast();
 
   const { data: contacts, isLoading } = useQuery({
@@ -311,7 +312,32 @@ export default function Contacts() {
         </div>
         <ContactDetail 
           contactId={selectedContactId} 
-          onEditContact={setEditContact}
+          onEditContact={(contact) => {
+            // Convert ContactWithDetails to Contact by extracting base properties
+            const { interactions, goals, documents, ...baseContact } = contact;
+            // Convert null to undefined for compatibility
+            const editableContact = {
+              ...baseContact,
+              phone: baseContact.phone ?? undefined,
+              avatarUrl: baseContact.avatarUrl ?? undefined,
+              lastContact: baseContact.lastContact?.toISOString() ?? undefined,
+              status: baseContact.status ?? undefined,
+              notes: baseContact.notes ?? undefined,
+              lifecycleStage: baseContact.lifecycleStage ?? undefined,
+              engagementTrend: baseContact.engagementTrend as 'improving' | 'stable' | 'declining' | undefined,
+              gdprConsentFormPath: baseContact.gdprConsentFormPath ?? undefined,
+              profilePictureSource: baseContact.profilePictureSource ?? undefined,
+              profilePictureScrapedAt: baseContact.profilePictureScrapedAt ?? undefined,
+              sex: baseContact.sex ?? undefined,
+              sentiment: baseContact.sentiment ?? undefined,
+              referralCount: baseContact.referralCount ?? undefined,
+              extractedFields: baseContact.extractedFields as Record<string, any> | undefined,
+              revenueData: baseContact.revenueData as Record<string, any> | undefined,
+              createdAt: baseContact.createdAt.toISOString(),
+              updatedAt: baseContact.updatedAt.toISOString(),
+            };
+            setEditContact(editableContact);
+          }}
         />
       </div>
     );
@@ -459,20 +485,24 @@ export default function Contacts() {
       <AddContactDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
       
       {/* Photo Upload Dialog */}
-      <ContactPhotoUpload
-        contactId={photoUploadContact?.id || ''}
-        contactName={photoUploadContact?.name || ''}
-        currentPhotoUrl={photoUploadContact?.avatarUrl}
-        open={!!photoUploadContact}
-        onOpenChange={(open) => !open && setPhotoUploadContact(null)}
-      />
+      {photoUploadContact && (
+        <ContactPhotoUpload
+          contactId={photoUploadContact.id}
+          contactName={photoUploadContact.name}
+          currentPhotoUrl={photoUploadContact.avatarUrl || undefined}
+          open={true}
+          onOpenChange={(open) => !open && setPhotoUploadContact(null)}
+        />
+      )}
       
       {/* AI Photo Review Dialog */}
-      <AIPhotoReview
-        contact={aiPhotoReviewContact}
-        open={!!aiPhotoReviewContact}
-        onOpenChange={(open) => !open && setAiPhotoReviewContact(null)}
-      />
+      {aiPhotoReviewContact && (
+        <AIPhotoReview
+          contact={aiPhotoReviewContact}
+          open={true}
+          onOpenChange={(open) => !open && setAiPhotoReviewContact(null)}
+        />
+      )}
       
       {/* Delete Contact Dialog */}
       <DeleteContactDialog

@@ -1,25 +1,31 @@
-import { DatabaseStorage } from '../storage';
-import { llmProcessor } from './llm-processor';
+import type { DatabaseStorage } from '../storage.js';
+import { llmProcessor } from './llm-processor.js';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 import fs from 'fs/promises';
 import path from 'path';
+import type { Contact } from '../../shared/schema.js';
 
-interface ContactInfo {
-  id: string;
-  name: string;
-  email?: string;
-  company?: string;
-  linkedinUrl?: string;
-  jobTitle?: string;
-  phone?: string;
-  allowProfilePictureScraping?: boolean;
-}
+// Use Drizzle-inferred Contact type from schema following DATA_DOCTRINE
+type ContactInfo = Pick<Contact, 'id' | 'name' | 'email' | 'phone'> & {
+  company?: string | null;
+  linkedinUrl?: string | null;
+  jobTitle?: string | null;
+  allowProfilePictureScraping?: boolean | null;
+};
 
 interface PhotoSuggestion {
   id: string;
   url: string;
-  source: 'linkedin' | 'gravatar' | 'clearbit' | 'ai_generated' | 'facebook' | 'twitter' | 'instagram' | 'github';
+  source:
+    | 'linkedin'
+    | 'gravatar'
+    | 'clearbit'
+    | 'ai_generated'
+    | 'facebook'
+    | 'twitter'
+    | 'instagram'
+    | 'github';
   confidence: number;
   thumbnailUrl: string;
   metadata?: {
@@ -38,6 +44,19 @@ interface SocialMediaHandles {
   github?: string;
 }
 
+// API response interfaces to replace any types
+interface ClearbitPersonResponse {
+  avatar?: string;
+  name?: string;
+  email?: string;
+}
+
+interface GitHubUserResponse {
+  avatar_url?: string;
+  login?: string;
+  name?: string;
+}
+
 export class PhotoEnrichmentService {
   constructor(private storage: DatabaseStorage) {}
 
@@ -49,11 +68,11 @@ export class PhotoEnrichmentService {
 Analyze the following contact information and extract or suggest likely social media handles/URLs:
 
 Contact: ${contact.name}
-Email: ${contact.email || 'N/A'}
-Company: ${contact.company || 'N/A'}
-Job Title: ${contact.jobTitle || 'N/A'}
-Phone: ${contact.phone || 'N/A'}
-LinkedIn: ${contact.linkedinUrl || 'N/A'}
+Email: ${contact.email ?? 'N/A'}
+Company: ${contact.company ?? 'N/A'}
+Job Title: ${contact.jobTitle ?? 'N/A'}
+Phone: ${contact.phone ?? 'N/A'}
+LinkedIn: ${contact.linkedinUrl ?? 'N/A'}
 
 Based on this information, provide the most likely social media profiles in this JSON format:
 {
@@ -68,7 +87,7 @@ Only include URLs that you can reasonably infer from the provided information. U
 
     try {
       const response = await llmProcessor.processWithKimi(prompt);
-      const handles = JSON.parse(response);
+      const handles = JSON.parse(response) as SocialMediaHandles;
       return handles;
     } catch (error) {
       console.error('Failed to extract social media handles:', error);
@@ -130,7 +149,7 @@ Only include URLs that you can reasonably infer from the provided information. U
     try {
       const emailHash = crypto.createHash('md5').update(email.toLowerCase().trim()).digest('hex');
       const gravatarUrl = `https://www.gravatar.com/avatar/${emailHash}?s=200&d=404`;
-      
+
       // Check if Gravatar exists
       const response = await fetch(gravatarUrl, { method: 'HEAD' });
       if (response.ok) {
@@ -144,8 +163,8 @@ Only include URLs that you can reasonably infer from the provided information. U
             size: { width: 200, height: 200 },
             format: 'jpeg',
             sourceUrl: `https://gravatar.com/profiles/${emailHash}`,
-            description: 'Gravatar profile photo'
-          }
+            description: 'Gravatar profile photo',
+          },
         };
       }
     } catch (error) {
@@ -160,10 +179,10 @@ Only include URLs that you can reasonably infer from the provided information. U
   private async getClearbitPhoto(email: string): Promise<PhotoSuggestion | null> {
     try {
       const clearbitUrl = `https://person.clearbit.com/v1/people/email/${email}`;
-      
+
       const response = await fetch(clearbitUrl);
       if (response.ok) {
-        const data = await response.json() as any;
+        const data = (await response.json()) as ClearbitPersonResponse;
         if (data.avatar) {
           return {
             id: `clearbit_${email}`,
@@ -174,8 +193,8 @@ Only include URLs that you can reasonably infer from the provided information. U
             metadata: {
               format: 'jpeg',
               sourceUrl: clearbitUrl,
-              description: 'Clearbit person profile photo'
-            }
+              description: 'Clearbit person profile photo',
+            },
           };
         }
       }
@@ -195,9 +214,9 @@ Only include URLs that you can reasonably infer from the provided information. U
 
       const apiUrl = `https://api.github.com/users/${username}`;
       const response = await fetch(apiUrl);
-      
+
       if (response.ok) {
-        const data = await response.json() as any;
+        const data = (await response.json()) as GitHubUserResponse;
         if (data.avatar_url) {
           return {
             id: `github_${username}`,
@@ -208,8 +227,8 @@ Only include URLs that you can reasonably infer from the provided information. U
             metadata: {
               format: 'jpeg',
               sourceUrl: githubUrl,
-              description: `GitHub avatar for ${username}`
-            }
+              description: `GitHub avatar for ${username}`,
+            },
           };
         }
       }
@@ -225,13 +244,15 @@ Only include URLs that you can reasonably infer from the provided information. U
   private generateAIAvatar(contact: ContactInfo): PhotoSuggestion {
     const initials = contact.name
       .split(' ')
-      .map(n => n[0])
+      .map((n) => n[0])
       .join('')
       .toUpperCase();
 
     // Generate using DiceBear (free avatar generation service)
-    const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(contact.name)}&backgroundColor=random&fontSize=40`;
-    
+    const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+      contact.name
+    )}&backgroundColor=random&fontSize=40`;
+
     return {
       id: `ai_generated_${Date.now()}`,
       url: avatarUrl,
@@ -240,15 +261,19 @@ Only include URLs that you can reasonably infer from the provided information. U
       thumbnailUrl: avatarUrl,
       metadata: {
         format: 'svg',
-        description: `AI-generated avatar for ${contact.name} (${initials})`
-      }
+        description: `AI-generated avatar for ${contact.name} (${initials})`,
+      },
     };
   }
 
   /**
    * Download and save a photo for a contact
    */
-  async downloadAndSavePhoto(contactId: string, photoUrl: string, source: string): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
+  async downloadAndSavePhoto(
+    contactId: string,
+    photoUrl: string,
+    source: string
+  ): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
     try {
       // Download the image
       const response = await fetch(photoUrl);
@@ -257,7 +282,7 @@ Only include URLs that you can reasonably infer from the provided information. U
       }
 
       const buffer = Buffer.from(await response.arrayBuffer());
-      
+
       // Create uploads directory if it doesn't exist
       const uploadsDir = path.join(process.cwd(), 'uploads', 'avatars');
       await fs.mkdir(uploadsDir, { recursive: true });
@@ -276,12 +301,12 @@ Only include URLs that you can reasonably infer from the provided information. U
 
       return {
         success: true,
-        avatarUrl
+        avatarUrl,
       };
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -289,7 +314,9 @@ Only include URLs that you can reasonably infer from the provided information. U
   /**
    * Batch process photo enrichment for all consented contacts
    */
-  async batchEnrichPhotos(userId: string): Promise<{ processed: number; success: number; errors: string[] }> {
+  async batchEnrichPhotos(
+    userId: string
+  ): Promise<{ processed: number; success: number; errors: string[] }> {
     try {
       // Get user's GDPR consent status
       const user = await this.storage.getUserById(userId);
@@ -299,34 +326,34 @@ Only include URLs that you can reasonably infer from the provided information. U
 
       // Get all contacts for this user that allow photo scraping
       const allContacts = await this.storage.getContactsByUserId(userId);
-      const consentedContacts = allContacts.filter(contact => 
-        contact.allowProfilePictureScraping && !contact.avatarUrl
+      const consentedContacts = allContacts.filter(
+        (contact) => contact.hasGdprConsent && !contact.avatarUrl
       );
 
       const results = {
         processed: 0,
         success: 0,
-        errors: [] as string[]
+        errors: [] as string[],
       };
 
       // Process contacts in batches to avoid rate limiting
       const batchSize = 3;
       for (let i = 0; i < consentedContacts.length; i += batchSize) {
         const batch = consentedContacts.slice(i, i + batchSize);
-        
+
         for (const contact of batch) {
           try {
             results.processed++;
             const suggestions = await this.findPhotoSuggestions(contact);
-            
+
             if (suggestions.length > 0) {
               const bestSuggestion = suggestions[0];
               const result = await this.downloadAndSavePhoto(
-                contact.id, 
-                bestSuggestion.url, 
+                contact.id,
+                bestSuggestion.url,
                 bestSuggestion.source
               );
-              
+
               if (result.success) {
                 results.success++;
                 console.log(`✓ Enriched photo for ${contact.name} from ${bestSuggestion.source}`);
@@ -337,33 +364,39 @@ Only include URLs that you can reasonably infer from the provided information. U
               results.errors.push(`${contact.name}: No photo suggestions found`);
             }
           } catch (error) {
-            results.errors.push(`${contact.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            results.errors.push(
+              `${contact.name}: ${error instanceof Error ? error.message : 'Unknown error'}`
+            );
           }
         }
 
         // Small delay between batches to respect rate limits
         if (i + batchSize < consentedContacts.length) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
         }
       }
 
       return results;
     } catch (error) {
-      throw new Error(`Batch enrichment failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error(
+        `Batch enrichment failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
     }
   }
 
   /**
    * Enrich a single contact's photo
    */
-  async enrichSingleContact(contactId: string): Promise<{ success: boolean; suggestion?: PhotoSuggestion; error?: string }> {
+  async enrichSingleContact(
+    contactId: string
+  ): Promise<{ success: boolean; suggestion?: PhotoSuggestion; error?: string }> {
     try {
       const contact = await this.storage.getContact(contactId);
       if (!contact) {
         throw new Error('Contact not found');
       }
 
-      if (!contact.allowProfilePictureScraping) {
+      if (!contact.hasGdprConsent) {
         throw new Error('Contact has not consented to profile picture scraping');
       }
 
@@ -374,23 +407,23 @@ Only include URLs that you can reasonably infer from the provided information. U
 
       const bestSuggestion = suggestions[0];
       const result = await this.downloadAndSavePhoto(
-        contact.id, 
-        bestSuggestion.url, 
+        contact.id,
+        bestSuggestion.url,
         bestSuggestion.source
       );
 
       if (result.success) {
         return {
           success: true,
-          suggestion: bestSuggestion
+          suggestion: bestSuggestion,
         };
       } else {
-        throw new Error(result.error || 'Failed to download photo');
+        throw new Error(result.error ?? 'Failed to download photo');
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }

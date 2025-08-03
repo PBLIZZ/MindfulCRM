@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from "react"
 import { ColumnDef, PaginationState, SortingState, ColumnFiltersState, VisibilityState } from "@tanstack/react-table"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js"
+import { Badge } from "@/components/ui/badge.js"
+import { Button } from "@/components/ui/button.js"
+import { Input } from "@/components/ui/input.js"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.js"
+import { Checkbox } from "@/components/ui/checkbox.js"
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu.js"
 import { 
   Table,
   TableBody,
@@ -22,11 +22,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table.js"
 import { 
   Mail, 
   Phone, 
-  Calendar, 
+   
   MessageSquare, 
   Eye, 
   Edit, 
@@ -101,18 +101,7 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active':
-      return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-    case 'inactive':
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
-    case 'potential':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
-  }
-}
+
 
 const getLifecycleStageColor = (stage: string) => {
   switch (stage) {
@@ -153,23 +142,30 @@ const getInitials = (name: string) => {
   )
 }
 
-const DEFAULT_PREFERENCES = {
+const DEFAULT_PREFERENCES: TablePreferences = {
   pageSize: 25,
   columnVisibility: {},
   sorting: [],
   filters: []
 }
 
-const loadPreferences = () => {
+interface TablePreferences {
+  pageSize: number;
+  columnVisibility: Record<string, boolean>;
+  sorting: SortingState;
+  filters: any[];
+}
+
+const loadPreferences = (): TablePreferences => {
   try {
     const saved = localStorage.getItem('contacts-table-preferences')
-    return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES
+    return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) as Partial<TablePreferences> } : DEFAULT_PREFERENCES
   } catch {
     return DEFAULT_PREFERENCES
   }
 }
 
-const savePreferences = (preferences: any) => {
+const savePreferences = (preferences: Partial<TablePreferences>) => {
   try {
     localStorage.setItem('contacts-table-preferences', JSON.stringify(preferences))
   } catch {
@@ -185,7 +181,7 @@ export function ContactsTable({
   onBulkAction,
   onExportData,
   onAddContact,
-  onAITool
+  onAITool,
 }: ContactsTableProps) {
   const [preferences] = useState(() => loadPreferences())
   const [globalFilter, setGlobalFilter] = useState('')
@@ -262,7 +258,7 @@ export function ContactsTable({
         return (
           <div className="flex items-center space-x-3">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={contact.avatarUrl} alt={contact.name} />
+              <AvatarImage src={contact.avatarUrl ?? undefined} alt={contact.name} />
               <AvatarFallback className="text-xs">
                 {getInitials(contact.name)}
               </AvatarFallback>
@@ -487,8 +483,8 @@ export function ContactsTable({
       id: `extracted_${fieldName}`,
       accessorFn: (row: Contact) => row.extractedFields?.[fieldName] || '',
       header: fieldName.charAt(0).toUpperCase() + fieldName.slice(1),
-      cell: ({ getValue }: any) => {
-        const value = getValue()
+      cell: ({ getValue }: { getValue: () => unknown }) => {
+        const value = getValue() as string | number | boolean | null | undefined
         return value ? (
           <span className="text-sm text-muted-foreground">{String(value)}</span>
         ) : (
@@ -597,7 +593,7 @@ export function ContactsTable({
     manualFiltering: false,
   })
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows
+  
   const selectedContactIds = Object.keys(rowSelection).filter(id => rowSelection[id])
 
   const resetPreferences = () => {

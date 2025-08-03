@@ -1,4 +1,4 @@
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext.js';
 import { useLocation } from 'wouter';
 import { useEffect } from 'react';
 import { Link } from 'wouter';
@@ -18,11 +18,11 @@ import {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-} from '@/components/ui/sidebar';
-import { Button } from '@/components/ui/button';
+} from '@/components/ui/sidebar.js';
+import { Button } from '@/components/ui/button.js';
 import { useQuery } from '@tanstack/react-query';
-import { cn } from '@/lib/utils';
-import logoPath from '@assets/logo_1753860249688.png';
+import { cn } from '@/lib/utils.js';
+// Logo import removed - using text-based logo instead
 import {
   Home,
   Users,
@@ -45,9 +45,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useTheme } from '@/contexts/ThemeContext';
+} from '@/components/ui/dropdown-menu.js';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js';
+import { useTheme } from '@/contexts/ThemeContext.js';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: Home },
@@ -160,7 +160,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <Sidebar variant='inset'>
         <SidebarHeader>
           <div className='flex items-center space-x-3 px-2 py-2'>
-            <img src={logoPath} alt='Wellness Hub Logo' className='w-8 h-8 rounded-lg' />
+            <div className='w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-sm'>WH</div>
             <div className='group-data-[collapsible=icon]:hidden'>
               <h1 className='text-lg font-bold text-teal-700 dark:text-teal-300'>OmniCRM</h1>
               <p className='text-xs text-muted-foreground'>Data Intelligence</p>

@@ -1,6 +1,7 @@
-import { gmail_v1, google } from 'googleapis';
+import { google, type gmail_v1, type Auth } from 'googleapis';
+import type { EmailFilterConfig } from '../types/llm-types.js';
 
-export interface EmailFilterConfig {
+export interface ExtendedEmailFilterConfig extends EmailFilterConfig {
   // Category exclusions (Gmail's automatic categorization)
   excludeCategories: string[];
   // Date range filtering
@@ -25,39 +26,75 @@ export interface FilteredEmail {
 
 export class GmailFilterService {
   private gmail: gmail_v1.Gmail;
-  private config: EmailFilterConfig;
+  private config: ExtendedEmailFilterConfig;
 
-  constructor(auth: any, config?: Partial<EmailFilterConfig>) {
+  constructor(
+    auth: Auth.OAuth2Client | Auth.GoogleAuth,
+    config?: Partial<ExtendedEmailFilterConfig>
+  ) {
     this.gmail = google.gmail({ version: 'v1', auth });
     this.config = {
+      maxEmails: config?.maxEmails ?? 100,
+      daysBack: config?.daysBack ?? 30,
+      businessHoursOnly: config?.businessHoursOnly ?? false,
+      excludePromotions: config?.excludePromotions ?? true,
+      excludeSocial: config?.excludeSocial ?? true,
       excludeCategories: ['promotions', 'social', 'updates', 'forums'],
       businessKeywords: [
-        'meeting', 'proposal', 'contract', 'invoice', 'quote', 'project',
-        'deadline', 'schedule', 'budget', 'client', 'appointment', 'call',
-        'consultation', 'review', 'feedback', 'collaboration', 'partnership'
+        'meeting',
+        'proposal',
+        'contract',
+        'invoice',
+        'quote',
+        'project',
+        'deadline',
+        'schedule',
+        'budget',
+        'client',
+        'appointment',
+        'call',
+        'consultation',
+        'review',
+        'feedback',
+        'collaboration',
+        'partnership',
       ],
       spamKeywords: [
-        'unsubscribe', 'opt out', 'click here', 'free trial', 'limited time',
-        'act now', 'congratulations', 'winner', 'prize', 'lottery', 'urgent',
-        'expires today', 'special offer', 'discount', 'sale ends'
+        'unsubscribe',
+        'opt out',
+        'click here',
+        'free trial',
+        'limited time',
+        'act now',
+        'congratulations',
+        'winner',
+        'prize',
+        'lottery',
+        'urgent',
+        'expires today',
+        'special offer',
+        'discount',
+        'sale ends',
       ],
       minRelevanceScore: 6,
-      ...config
+      ...config,
     };
   }
 
   /**
    * Build Gmail API query with aggressive pre-filtering
    */
-  private buildFilterQuery(options: {
-    afterDate?: Date;
-    beforeDate?: Date;
-    maxResults?: number;
-  } = {}): string {
+  private buildFilterQuery(
+    options: {
+      afterDate?: Date;
+      beforeDate?: Date;
+      maxResults?: number;
+    } = {}
+  ): string {
     const queryParts: string[] = [];
 
     // Exclude non-business categories (most effective filter)
-    this.config.excludeCategories.forEach(category => {
+    this.config.excludeCategories.forEach((category) => {
       queryParts.push(`-category:${category}`);
     });
 
@@ -74,10 +111,10 @@ export class GmailFilterService {
     // Exclude obvious spam patterns
     const spamExclusions = [
       '-"unsubscribe"',
-      '-"opt out"', 
+      '-"opt out"',
       '-"click here"',
       '-"free trial"',
-      '-"limited time"'
+      '-"limited time"',
     ];
     queryParts.push(...spamExclusions);
 
@@ -89,7 +126,7 @@ export class GmailFilterService {
       '"contract"',
       '"invoice"',
       '"project"',
-      '"client"'
+      '"client"',
     ];
     if (businessIndicators.length > 0) {
       queryParts.push(`(${businessIndicators.join(' OR ')})`);
@@ -115,14 +152,14 @@ export class GmailFilterService {
     if (category === 'primary') {
       score += 3;
       reasons.push('Gmail primary category');
-    } else if (this.config.excludeCategories.includes(category || '')) {
+    } else if (this.config.excludeCategories.includes(category ?? '')) {
       score -= 5;
       reasons.push(`Excluded category: ${category}`);
     }
 
     // Business keywords in subject (weighted heavily)
     const subjectLower = subject.toLowerCase();
-    const businessMatches = this.config.businessKeywords.filter(keyword => 
+    const businessMatches = this.config.businessKeywords.filter((keyword) =>
       subjectLower.includes(keyword.toLowerCase())
     );
     if (businessMatches.length > 0) {
@@ -131,9 +168,10 @@ export class GmailFilterService {
     }
 
     // Spam keywords (heavy penalty)
-    const spamMatches = this.config.spamKeywords.filter(keyword =>
-      subjectLower.includes(keyword.toLowerCase()) || 
-      snippet.toLowerCase().includes(keyword.toLowerCase())
+    const spamMatches = this.config.spamKeywords.filter(
+      (keyword) =>
+        subjectLower.includes(keyword.toLowerCase()) ||
+        snippet.toLowerCase().includes(keyword.toLowerCase())
     );
     if (spamMatches.length > 0) {
       score -= spamMatches.length * 3;
@@ -148,16 +186,25 @@ export class GmailFilterService {
         score += 4;
         reasons.push(`Whitelisted domain: ${domain}`);
       }
-      
+
       // Exclude known marketing domains
       const marketingDomains = [
-        'mailchimp.com', 'constantcontact.com', 'campaign-archive.com',
-        'mailjet.com', 'sendgrid.net', 'amazonses.com', 'notifications.google.com',
-        'noreply', 'no-reply', 'donotreply'
+        'mailchimp.com',
+        'constantcontact.com',
+        'campaign-archive.com',
+        'mailjet.com',
+        'sendgrid.net',
+        'amazonses.com',
+        'notifications.google.com',
+        'noreply',
+        'no-reply',
+        'donotreply',
       ];
-      
-      if (marketingDomains.some(md => domain.includes(md)) || 
-          fromEmail.toLowerCase().includes('noreply')) {
+
+      if (
+        marketingDomains.some((md) => domain.includes(md)) ||
+        fromEmail.toLowerCase().includes('noreply')
+      ) {
         score -= 4;
         reasons.push(`Marketing/automated domain: ${domain}`);
       }
@@ -178,14 +225,29 @@ export class GmailFilterService {
 
     // Content analysis
     const businessContentKeywords = [
-      'meeting', 'schedule', 'appointment', 'call', 'zoom', 'teams',
-      'proposal', 'contract', 'agreement', 'invoice', 'payment',
-      'project', 'deadline', 'milestone', 'deliverable',
-      'client', 'customer', 'collaboration', 'partnership'
+      'meeting',
+      'schedule',
+      'appointment',
+      'call',
+      'zoom',
+      'teams',
+      'proposal',
+      'contract',
+      'agreement',
+      'invoice',
+      'payment',
+      'project',
+      'deadline',
+      'milestone',
+      'deliverable',
+      'client',
+      'customer',
+      'collaboration',
+      'partnership',
     ];
 
     const contentText = (subject + ' ' + snippet).toLowerCase();
-    const contentMatches = businessContentKeywords.filter(keyword =>
+    const contentMatches = businessContentKeywords.filter((keyword) =>
       contentText.includes(keyword)
     );
 
@@ -200,19 +262,21 @@ export class GmailFilterService {
   /**
    * Fetch and filter emails with aggressive pre-filtering
    */
-  async fetchFilteredEmails(options: {
-    afterDate?: Date;
-    beforeDate?: Date;
-    maxResults?: number;
-    pageToken?: string;
-  } = {}): Promise<{
+  async fetchFilteredEmails(
+    options: {
+      afterDate?: Date;
+      beforeDate?: Date;
+      maxResults?: number;
+      pageToken?: string;
+    } = {}
+  ): Promise<{
     emails: FilteredEmail[];
     totalFetched: number;
     totalFiltered: number;
     nextPageToken?: string;
   }> {
     const query = this.buildFilterQuery(options);
-    
+
     console.log('Gmail API Query:', query);
 
     try {
@@ -220,19 +284,19 @@ export class GmailFilterService {
       const listResponse = await this.gmail.users.messages.list({
         userId: 'me',
         q: query,
-        maxResults: options.maxResults || 100,
-        pageToken: options.pageToken
+        maxResults: options.maxResults ?? 100,
+        pageToken: options.pageToken,
       });
 
-      const messages = listResponse.data.messages || [];
+      const messages = listResponse.data.messages ?? [];
       const totalFetched = messages.length;
 
       if (messages.length === 0) {
-        return { 
-          emails: [], 
-          totalFetched: 0, 
+        return {
+          emails: [],
+          totalFetched: 0,
           totalFiltered: 0,
-          nextPageToken: listResponse.data.nextPageToken 
+          nextPageToken: listResponse.data.nextPageToken ?? undefined,
         };
       }
 
@@ -242,14 +306,14 @@ export class GmailFilterService {
 
       for (let i = 0; i < messages.length; i += batchSize) {
         const batch = messages.slice(i, i + batchSize);
-        
+
         // Create batch request
-        const batchPromises = batch.map(message => 
+        const batchPromises = batch.map((message) =>
           this.gmail.users.messages.get({
             userId: 'me',
             id: message.id!,
             format: 'metadata',
-            metadataHeaders: ['Subject', 'From', 'To', 'Date', 'Category']
+            metadataHeaders: ['Subject', 'From', 'To', 'Date', 'Category'],
           })
         );
 
@@ -259,26 +323,26 @@ export class GmailFilterService {
         for (const result of batchResults) {
           if (result.status === 'fulfilled') {
             const message = result.value.data;
-            const headers = message.payload?.headers || [];
-            
-            const subject = headers.find(h => h.name === 'Subject')?.value || '';
-            const from = headers.find(h => h.name === 'From')?.value || '';
-            const fromEmail = from.match(/<(.+?)>/)?.[1] || from;
-            
+            const headers = message.payload?.headers ?? [];
+
+            const subject = headers.find((h) => h.name === 'Subject')?.value ?? '';
+            const from = headers.find((h) => h.name === 'From')?.value ?? '';
+            const fromEmail = from.match(/<(.+?)>/)?.[1] ?? from;
+
             // Extract category if available
-            const category = headers.find(h => h.name === 'Category')?.value;
-            
-            const hasAttachments = (message.payload?.parts?.some(part => 
-              part.filename && part.filename.length > 0
-            )) || false;
+            const category = headers.find((h) => h.name === 'Category')?.value;
+
+            const hasAttachments =
+              message.payload?.parts?.some((part) => part.filename && part.filename.length > 0) ??
+              false;
 
             // Calculate relevance score
             const { score, reasons } = this.calculateRelevanceScore(
               subject,
               fromEmail,
-              message.snippet || '',
+              message.snippet ?? '',
               hasAttachments,
-              category
+              category ?? undefined
             );
 
             // Only include emails above threshold
@@ -287,7 +351,7 @@ export class GmailFilterService {
                 message,
                 relevanceScore: score,
                 filterReason: reasons.join('; '),
-                category
+                category: category ?? undefined,
               });
             }
           }
@@ -301,9 +365,8 @@ export class GmailFilterService {
         emails: filteredEmails,
         totalFetched,
         totalFiltered: filteredEmails.length,
-        nextPageToken: listResponse.data.nextPageToken
+        nextPageToken: listResponse.data.nextPageToken ?? undefined,
       };
-
     } catch (error) {
       console.error('Gmail filtering error:', error);
       throw new Error(`Failed to fetch filtered emails: ${error}`);
@@ -328,24 +391,26 @@ export class GmailFilterService {
     const totalResponse = await this.gmail.users.messages.list({
       userId: 'me',
       q: totalQuery,
-      maxResults: 1
+      maxResults: 1,
     });
 
     // Get filtered results
-    const filteredResult = await this.fetchFilteredEmails({ 
-      afterDate, 
-      maxResults: 100 
+    const filteredResult = await this.fetchFilteredEmails({
+      afterDate,
+      maxResults: 100,
     });
 
     const processingTimeMs = Date.now() - startTime;
 
     return {
-      totalEmails: totalResponse.data.resultSizeEstimate || 0,
+      totalEmails: totalResponse.data.resultSizeEstimate ?? 0,
       excludedByCategory: {}, // Would need additional API calls to get category breakdown
-      averageRelevanceScore: filteredResult.emails.length > 0 
-        ? filteredResult.emails.reduce((sum, email) => sum + email.relevanceScore, 0) / filteredResult.emails.length
-        : 0,
-      processingTimeMs
+      averageRelevanceScore:
+        filteredResult.emails.length > 0
+          ? filteredResult.emails.reduce((sum, email) => sum + email.relevanceScore, 0) /
+            filteredResult.emails.length
+          : 0,
+      processingTimeMs,
     };
   }
 

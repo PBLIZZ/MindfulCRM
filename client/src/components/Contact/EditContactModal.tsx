@@ -1,28 +1,28 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button.js'
+import { Input } from '@/components/ui/input.js'
+import { Label } from '@/components/ui/label.js'
+import { Textarea } from '@/components/ui/textarea.js'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select.js'
+import { Badge } from '@/components/ui/badge.js'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog'
+} from '@/components/ui/dialog.js'
 import { 
   Upload, 
   X, 
-  Camera, 
+   
   Loader2,
   Plus
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
-import type { Contact } from './ContactsTable'
+import { useToast } from '@/hooks/use-toast.js'
+import type { Contact } from './ContactsTable.js'
 
 interface EditContactModalProps {
   contact: Contact | null
@@ -205,7 +205,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
       onOpenChange(false)
       resetForm()
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: 'Update failed',
         description: error instanceof Error ? error.message : 'Failed to update contact',

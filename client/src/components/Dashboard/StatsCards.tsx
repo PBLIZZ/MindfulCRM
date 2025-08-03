@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card.js";
 import { Users, Calendar, Trophy, TrendingUp } from "lucide-react";
 
 export default function StatsCards() {

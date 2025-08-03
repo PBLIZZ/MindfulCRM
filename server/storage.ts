@@ -28,7 +28,6 @@ import {
   type InsertDocument,
   type SyncStatus,
   type InsertSyncStatus,
-  type CalendarEvent,
   type InsertCalendarEvent,
   type Email,
   type InsertEmail,
@@ -37,7 +36,6 @@ import {
   type Tag,
   type InsertTag,
   type ContactTag,
-  type InsertContactTag,
   type ProcessedEvent,
   type InsertProcessedEvent,
   type Project,
@@ -50,10 +48,13 @@ import {
   type InsertAiSuggestion,
   type DataProcessingJob,
   type InsertDataProcessingJob,
-} from '@shared/schema';
-import { db } from './db';
+} from '../shared/schema.js';
+import { db } from './db.js';
+import type { CalendarEvent } from '../shared/schema.js';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 import crypto from 'crypto';
+import { encrypt, decrypt } from './services/encryption.js';
+import type { CalendarEventAnalysis } from './types/llm-types.js';
 
 export interface IStorage {
   // Users
@@ -61,7 +62,8 @@ export interface IStorage {
   getUserById(id: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  updateUser(id: string, updates: Partial<InsertUser>): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User>;
+  deleteUser(id: string): Promise<void>;
   updateUserGdprConsent(
     id: string,
     consent: {
@@ -118,7 +120,7 @@ export interface IStorage {
   createEmail(email: InsertEmail): Promise<Email>;
   updateEmail(id: string, updates: Partial<InsertEmail>): Promise<Email>;
   getUnprocessedEmails(userId: string): Promise<Email[]>;
-  markEmailProcessed(id: string, extractedData: any): Promise<Email>;
+  markEmailProcessed(id: string, extractedData: Record<string, unknown>): Promise<Email>;
 
   // Calendar Events (Raw Google Data)
   getCalendarEventsByUserId(userId: string, limit?: number): Promise<CalendarEvent[]>;
@@ -130,7 +132,10 @@ export interface IStorage {
   createCalendarEvent(event: InsertCalendarEvent): Promise<CalendarEvent>;
   updateCalendarEvent(id: string, updates: Partial<InsertCalendarEvent>): Promise<CalendarEvent>;
   getUnprocessedCalendarEvents(userId: string): Promise<CalendarEvent[]>;
-  markCalendarEventProcessed(id: string, extractedData: any): Promise<CalendarEvent>;
+  markCalendarEventProcessed(
+    id: string,
+    extractedData: Record<string, unknown>
+  ): Promise<CalendarEvent>;
 
   // Contact Photos
   createContactPhoto(photo: InsertContactPhoto): Promise<ContactPhoto>;
@@ -152,7 +157,7 @@ export interface IStorage {
     eventId: string,
     eventHash: string,
     isRelevant: boolean,
-    analysis?: any,
+    analysis?: CalendarEventAnalysis,
     llmModel?: string
   ): Promise<ProcessedEvent>;
   getProcessedEvent(eventId: string): Promise<ProcessedEvent | undefined>;
@@ -204,31 +209,72 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    if (!user) return undefined;
+
+    // Decrypt tokens before returning
+    return {
+      ...user,
+      accessToken: decrypt(user.accessToken),
+      refreshToken: decrypt(user.refreshToken),
+    };
   }
 
   async getUserById(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    return this.getUser(id);
   }
 
   async getUserByGoogleId(googleId: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
-    return user || undefined;
+    if (!user) return undefined;
+
+    // Decrypt tokens before returning
+    return {
+      ...user,
+      accessToken: decrypt(user.accessToken),
+      refreshToken: decrypt(user.refreshToken),
+    };
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db.insert(users).values(insertUser).returning();
-    return user;
+    // Encrypt tokens before storing
+    const encryptedUser = {
+      ...insertUser,
+      accessToken: encrypt(insertUser.accessToken),
+      refreshToken: encrypt(insertUser.refreshToken),
+    };
+
+    const [user] = await db.insert(users).values(encryptedUser).returning();
+
+    // Decrypt tokens for return value
+    return {
+      ...user,
+      accessToken: decrypt(user.accessToken),
+      refreshToken: decrypt(user.refreshToken),
+    };
   }
 
   async updateUser(id: string, updates: Partial<InsertUser>): Promise<User> {
+    // Encrypt tokens if they're being updated
+    const encryptedUpdates = { ...updates };
+    if (updates.accessToken) {
+      encryptedUpdates.accessToken = encrypt(updates.accessToken);
+    }
+    if (updates.refreshToken) {
+      encryptedUpdates.refreshToken = encrypt(updates.refreshToken);
+    }
+
     const [user] = await db
       .update(users)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...encryptedUpdates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
-    return user;
+
+    // Decrypt tokens for return value
+    return {
+      ...user,
+      accessToken: decrypt(user.accessToken),
+      refreshToken: decrypt(user.refreshToken),
+    };
   }
 
   async updateUserGdprConsent(
@@ -250,6 +296,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, id))
       .returning();
     return user;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async getContactsByUserId(userId: string): Promise<Contact[]> {
@@ -287,9 +337,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get tags for this contact
     const contactTagsData = await db
-      .select({
-        tag: tags,
-      })
+      .select({ tag: tags })
       .from(contactTags)
       .innerJoin(tags, eq(contactTags.tagId, tags.id))
       .where(eq(contactTags.contactId, contact.id));
@@ -332,12 +380,16 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(interactions.timestamp));
   }
 
-  async createInteraction(insertInteraction: InsertInteraction): Promise<Interaction> {
-    // Auto-analyze sentiment if not provided and content exists
-    if (!insertInteraction.sentiment && insertInteraction.content) {
+  async createInteraction(
+    insertInteraction: InsertInteraction,
+    analyzeSentiment: boolean = true
+  ): Promise<Interaction> {
+    // Auto-analyze sentiment if not provided and content exists, and if enabled
+    if (analyzeSentiment && !insertInteraction.sentiment && insertInteraction.content) {
       try {
-        const { mistralService } = await import('./services/mistral');
-        const sentimentResult = await mistralService.analyzeSentiment(insertInteraction.content);
+        const { mistralService } = await import('./services/mistral.js');
+        const sentimentResult: { rating: number; confidence: number } =
+          await mistralService.analyzeSentiment(insertInteraction.content);
         insertInteraction.sentiment = sentimentResult.rating;
       } catch (error) {
         console.warn('Failed to analyze sentiment for interaction:', error);
@@ -471,10 +523,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(contacts, eq(interactions.contactId, contacts.id))
       .where(and(eq(contacts.userId, userId), eq(interactions.type, 'email')));
 
-    const totalClients = Number(totalClientsResult.count) || 0;
-    const weeklySessions = Number(weeklySessionsResult.count) || 0;
-    const achievedGoals = Number(achievedGoalsResult.count) || 0;
-    const totalEmails = Number(totalEmailsResult.count) || 0;
+    const totalClients = Number(totalClientsResult.count ?? 0);
+    const weeklySessions = Number(weeklySessionsResult.count ?? 0);
+    const achievedGoals = Number(achievedGoalsResult.count ?? 0);
+    const totalEmails = Number(totalEmailsResult.count ?? 0);
 
     // Mock response rate calculation - in real implementation, this would track actual responses
     const responseRate = totalEmails > 0 ? Math.min(95, 80 + (totalEmails % 20)) : 0;
@@ -510,7 +562,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(emails)
       .where(and(eq(emails.userId, userId), eq(emails.gmailMessageId, gmailMessageId)));
-    return email || undefined;
+    return email ?? undefined;
   }
 
   async createEmail(insertEmail: InsertEmail): Promise<Email> {
@@ -535,7 +587,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(emails.timestamp));
   }
 
-  async markEmailProcessed(id: string, extractedData: any): Promise<Email> {
+  async markEmailProcessed(id: string, extractedData: Record<string, unknown>): Promise<Email> {
     const [email] = await db
       .update(emails)
       .set({
@@ -576,7 +628,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(eq(calendarEvents.userId, userId), eq(calendarEvents.googleEventId, googleEventId))
       );
-    return event || undefined;
+    return event ?? undefined;
   }
 
   async createCalendarEvent(insertEvent: InsertCalendarEvent): Promise<CalendarEvent> {
@@ -604,7 +656,10 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(calendarEvents.startTime));
   }
 
-  async markCalendarEventProcessed(id: string, extractedData: any): Promise<CalendarEvent> {
+  async markCalendarEventProcessed(
+    id: string,
+    extractedData: Record<string, unknown>
+  ): Promise<CalendarEvent> {
     const [event] = await db
       .update(calendarEvents)
       .set({
@@ -617,10 +672,10 @@ export class DatabaseStorage implements IStorage {
     return event;
   }
 
-  // Contact Photos
-  async createContactPhoto(insertPhoto: InsertContactPhoto): Promise<ContactPhoto> {
-    const [photo] = await db.insert(contactPhotos).values(insertPhoto).returning();
-    return photo;
+  // Contact Photos (Already implemented above)
+  async createContactPhoto(photo: InsertContactPhoto): Promise<ContactPhoto> {
+    const [newPhoto] = await db.insert(contactPhotos).values(photo).returning();
+    return newPhoto;
   }
 
   async getContactPhotos(contactId: string): Promise<ContactPhoto[]> {
@@ -678,6 +733,20 @@ export class DatabaseStorage implements IStorage {
 
   async removeTagFromContacts(contactIds: string[], tagId: string): Promise<boolean> {
     try {
+      // Validate all contactIds are valid UUIDs to prevent SQL injection
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      for (const contactId of contactIds) {
+        if (!uuidRegex.test(contactId)) {
+          throw new Error(`Invalid UUID format: ${contactId}`);
+        }
+      }
+
+      // Validate tagId is a valid UUID
+      if (!uuidRegex.test(tagId)) {
+        throw new Error(`Invalid UUID format for tagId: ${tagId}`);
+      }
+
       await db
         .delete(contactTags)
         .where(
@@ -726,7 +795,7 @@ export class DatabaseStorage implements IStorage {
     eventId: string,
     eventHash: string,
     isRelevant: boolean,
-    analysis?: any,
+    analysis?: CalendarEventAnalysis,
     llmModel?: string
   ): Promise<ProcessedEvent> {
     const processedEventData: InsertProcessedEvent = {
@@ -765,7 +834,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(processedEvents)
       .where(eq(processedEvents.eventId, eventId));
-    return processedEvent || undefined;
+    return processedEvent ?? undefined;
   }
 
   // Task Management Implementation
@@ -780,7 +849,7 @@ export class DatabaseStorage implements IStorage {
 
   async getProject(id: string): Promise<Project | undefined> {
     const [project] = await db.select().from(projects).where(eq(projects.id, id));
-    return project || undefined;
+    return project ?? undefined;
   }
 
   async createProject(project: InsertProject): Promise<Project> {
@@ -809,17 +878,18 @@ export class DatabaseStorage implements IStorage {
 
   // Tasks
   async getTasksByUserId(userId: string, statuses?: string[]): Promise<Task[]> {
-    let whereConditions = [eq(tasks.userId, userId)];
+    const whereConditions = [eq(tasks.userId, userId)];
 
     if (statuses && statuses.length > 0) {
       whereConditions.push(sql`${tasks.status} = ANY(${statuses})`);
     }
 
-    return await db
+    const result: Task[] = await db
       .select()
       .from(tasks)
       .where(and(...whereConditions))
       .orderBy(desc(tasks.createdAt));
+    return result;
   }
 
   async getTasksByProjectId(projectId: string): Promise<Task[]> {
@@ -834,7 +904,7 @@ export class DatabaseStorage implements IStorage {
     status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'waiting_approval',
     owner?: 'user' | 'ai_assistant'
   ): Promise<Task[]> {
-    let whereConditions = [eq(tasks.status, status)];
+    const whereConditions = [eq(tasks.status, status)];
 
     if (owner) {
       whereConditions.push(eq(tasks.owner, owner));
@@ -849,7 +919,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTask(id: string): Promise<Task | undefined> {
     const [task] = await db.select().from(tasks).where(eq(tasks.id, id));
-    return task || undefined;
+    return task ?? undefined;
   }
 
   async createTask(task: InsertTask): Promise<Task> {
@@ -900,7 +970,7 @@ export class DatabaseStorage implements IStorage {
 
   // AI Suggestions
   async getAiSuggestionsByUserId(userId: string, status?: string): Promise<AiSuggestion[]> {
-    let whereConditions = [eq(aiSuggestions.userId, userId)];
+    const whereConditions = [eq(aiSuggestions.userId, userId)];
 
     if (status) {
       whereConditions.push(eq(aiSuggestions.status, status));
@@ -915,7 +985,7 @@ export class DatabaseStorage implements IStorage {
 
   async getAiSuggestion(id: string): Promise<AiSuggestion | undefined> {
     const [suggestion] = await db.select().from(aiSuggestions).where(eq(aiSuggestions.id, id));
-    return suggestion || undefined;
+    return suggestion ?? undefined;
   }
 
   async createAiSuggestion(suggestion: InsertAiSuggestion): Promise<AiSuggestion> {

@@ -2,7 +2,6 @@ import { sql, relations } from 'drizzle-orm';
 import {
   pgTable,
   text,
-  varchar,
   timestamp,
   integer,
   jsonb,
@@ -11,8 +10,8 @@ import {
   pgEnum,
   index,
 } from 'drizzle-orm/pg-core';
-import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { z } from 'zod';
+import { createInsertSchema } from 'drizzle-zod';
+import type { z } from 'zod';
 
 // Enums
 export const lifecycleStageEnum = pgEnum('lifecycle_stage', [
@@ -604,10 +603,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   parentTask: one(tasks, {
     fields: [tasks.parentTaskId],
     references: [tasks.id],
-    relationName: 'subtasks',
+    relationName: 'parentSubtask',
   }),
   subtasks: many(tasks, {
-    relationName: 'subtasks',
+    relationName: 'parentSubtask',
   }),
   activities: many(taskActivities),
 }));

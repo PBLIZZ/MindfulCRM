@@ -1,24 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiRequest } from '@/lib/queryClient';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { apiRequest } from '@/lib/queryClient.js';
+import type { Task, Project, AiSuggestion, InsertTask, InsertProject } from '@shared/schema.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import { Button } from '@/components/ui/button.js';
+import { Badge } from '@/components/ui/badge.js';
+import { Progress } from '@/components/ui/progress.js';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.js';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+} from '@/components/ui/select.js';
+import { Input } from '@/components/ui/input.js';
+import { Label } from '@/components/ui/label.js';
+import { Textarea } from '@/components/ui/textarea.js';
+import { Switch } from '@/components/ui/switch.js';
+import { Calendar } from '@/components/ui/calendar.js';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover.js';
 import {
   Dialog,
   DialogContent,
@@ -26,14 +27,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog.js';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { toast } from '@/hooks/use-toast';
+} from '@/components/ui/dropdown-menu.js';
+import { toast } from '@/hooks/use-toast.js';
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -47,50 +48,35 @@ import {
   Target,
   TrendingUp,
   AlertCircle,
-  Filter,
   Search,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled' | 'waiting_approval';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  owner: 'user' | 'ai_assistant';
+// Component-specific interfaces
+interface TasksTabProps {
+  tasks: Task[];
+  projects: Project[];
+  isLoading: boolean;
+  taskFilter: string;
+  setTaskFilter: (filter: string) => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
+  selectedProjectFilter: string;
+  setSelectedProjectFilter: (filter: string) => void;
+  getPriorityColor: (priority: string | null | undefined) => string;
+  getStatusColor: (status: string | null | undefined) => string;
+}
+
+interface TaskUpdateData {
+  status?: string;
+  title?: string;
+  description?: string;
+  priority?: string;
   dueDate?: string;
   completedAt?: string;
-  estimatedMinutes?: number;
-  actualMinutes?: number;
-  assignedContactIds?: string[];
-  tags?: string[];
-  projectId?: string;
-  parentTaskId?: string;
-  isAiGenerated: boolean;
-  requiresApproval: boolean;
-  createdAt: string;
-  updatedAt: string;
 }
 
-interface Project {
-  id: string;
-  name: string;
-  description?: string;
-  color: string;
-  isArchived: boolean;
-  createdAt: string;
-}
 
-interface AiSuggestion {
-  id: string;
-  type: string;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'approved' | 'rejected' | 'executed';
-  createdAt: string;
-}
 
 export default function Tasks() {
   const [selectedTab, setSelectedTab] = useState('tasks');
@@ -100,27 +86,47 @@ export default function Tasks() {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [selectedProjectFilter, setSelectedProjectFilter] = useState('all');
 
-  const queryClient = useQueryClient();
-
   // Fetch data
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
+  const { data: tasks = [], isLoading: tasksLoading } = useQuery<Task[]>({
     queryKey: ['/api/tasks'],
-    queryFn: () => apiRequest('/api/tasks'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/tasks');
+      return response.json() as Promise<Task[]>;
+    },
   });
 
-  const { data: projects = [] } = useQuery({
+  const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ['/api/projects'],
-    queryFn: () => apiRequest('/api/projects'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/projects');
+      return response.json() as Promise<Project[]>;
+    },
   });
 
-  const { data: aiSuggestions = [] } = useQuery({
+  const { data: aiSuggestions = [] } = useQuery<AiSuggestion[]>({
     queryKey: ['/api/ai-suggestions'],
-    queryFn: () => apiRequest('/api/ai-suggestions'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/ai-suggestions');
+      return response.json() as Promise<AiSuggestion[]>;
+    },
   });
 
-  const { data: analytics } = useQuery({
+  // Define analytics type for API response
+  interface TaskAnalytics {
+    totalTasks: number;
+    pendingTasks: number;
+    completionRate: string;
+    overdueTasks: number;
+    todaysTasks: number;
+    aiTasksInProgress: number;
+  }
+
+  const { data: analytics } = useQuery<TaskAnalytics>({
     queryKey: ['/api/tasks/analytics'],
-    queryFn: () => apiRequest('/api/tasks/analytics'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/tasks/analytics');
+      return response.json() as Promise<TaskAnalytics>;
+    },
   });
 
   // Filter tasks
@@ -135,8 +141,8 @@ export default function Tasks() {
     return matchesSearch && matchesStatus && matchesProject;
   });
 
-  // Get priority color
-  const getPriorityColor = (priority: string) => {
+  // Get priority color - accepts undefined for client-side data
+  const getPriorityColor = (priority: string | null | undefined) => {
     switch (priority) {
       case 'urgent':
         return 'bg-red-500';
@@ -151,8 +157,8 @@ export default function Tasks() {
     }
   };
 
-  // Get status color
-  const getStatusColor = (status: string) => {
+  // Get status color - accepts undefined for client-side data
+  const getStatusColor = (status: string | null | undefined) => {
     switch (status) {
       case 'completed':
         return 'bg-green-100 text-green-800';
@@ -214,8 +220,8 @@ export default function Tasks() {
               <Target className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold'>{analytics.totalTasks}</div>
-              <p className='text-xs text-muted-foreground'>{analytics.pendingTasks} pending</p>
+              <div className='text-2xl font-bold'>{analytics?.totalTasks ?? 0}</div>
+              <p className='text-xs text-muted-foreground'>{analytics?.pendingTasks ?? 0} pending</p>
             </CardContent>
           </Card>
 
@@ -225,8 +231,8 @@ export default function Tasks() {
               <TrendingUp className='h-4 w-4 text-muted-foreground' />
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold'>{analytics.completionRate}%</div>
-              <Progress value={parseFloat(analytics.completionRate)} className='mt-2' />
+              <div className='text-2xl font-bold'>{analytics?.completionRate ?? '0'}%</div>
+              <Progress value={parseFloat(analytics?.completionRate ?? '0')} className='mt-2' />
             </CardContent>
           </Card>
 
@@ -236,8 +242,8 @@ export default function Tasks() {
               <AlertCircle className='h-4 w-4 text-red-500' />
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold text-red-600'>{analytics.overdueTasks}</div>
-              <p className='text-xs text-muted-foreground'>{analytics.todaysTasks} due today</p>
+              <div className='text-2xl font-bold text-red-600'>{analytics?.overdueTasks ?? 0}</div>
+              <p className='text-xs text-muted-foreground'>{analytics?.todaysTasks ?? 0} due today</p>
             </CardContent>
           </Card>
 
@@ -247,7 +253,7 @@ export default function Tasks() {
               <Bot className='h-4 w-4 text-blue-500' />
             </CardHeader>
             <CardContent>
-              <div className='text-2xl font-bold'>{analytics.aiTasksInProgress}</div>
+              <div className='text-2xl font-bold'>{analytics?.aiTasksInProgress ?? 0}</div>
               <p className='text-xs text-muted-foreground'>tasks in progress</p>
             </CardContent>
           </Card>
@@ -263,7 +269,7 @@ export default function Tasks() {
           <TabsTrigger value='suggestions' className='flex items-center gap-2'>
             <Lightbulb className='h-4 w-4' />
             AI Suggestions (
-            {aiSuggestions.filter((s: AiSuggestion) => s.status === 'pending').length})
+            {(aiSuggestions || []).filter((s: AiSuggestion) => s.status === 'pending').length})
           </TabsTrigger>
           <TabsTrigger value='projects' className='flex items-center gap-2'>
             <Target className='h-4 w-4' />
@@ -312,27 +318,27 @@ function TasksTab({
   setSelectedProjectFilter,
   getPriorityColor,
   getStatusColor,
-}: any) {
+}: TasksTabProps) {
   const queryClient = useQueryClient();
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ taskId, updates }: { taskId: string; updates: any }) =>
-      apiRequest(`/api/tasks/${taskId}`, { method: 'PATCH', body: updates }),
+    mutationFn: ({ taskId, updates }: { taskId: string; updates: TaskUpdateData }) =>
+      apiRequest('PATCH', `/api/tasks/${taskId}`, updates),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks/analytics'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/tasks/analytics'] });
       toast({ title: 'Task updated successfully' });
     },
   });
 
   const toggleTaskStatus = (task: Task) => {
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-    const updates: any = { status: newStatus };
+    const updates: TaskUpdateData = { status: newStatus };
 
     if (newStatus === 'completed') {
       updates.completedAt = new Date().toISOString();
     } else {
-      updates.completedAt = null;
+      updates.completedAt = undefined;
     }
 
     updateTaskMutation.mutate({ taskId: task.id, updates });
@@ -375,7 +381,7 @@ function TasksTab({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='all'>All Projects</SelectItem>
-            {projects.map((project: Project) => (
+            {(projects || []).map((project: Project) => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}
               </SelectItem>
@@ -445,7 +451,7 @@ function TasksTab({
 
                       <div className='flex items-center gap-4 text-sm text-gray-500'>
                         <Badge className={getStatusColor(task.status)}>
-                          {task.status.replace('_', ' ')}
+                          {task.status?.replace('_', ' ') ?? 'Unknown'}
                         </Badge>
 
                         {task.dueDate && (
@@ -455,12 +461,14 @@ function TasksTab({
                           </div>
                         )}
 
-                        {task.assignedContactIds && task.assignedContactIds.length > 0 && (
+                        {task.assignedContactIds && 
+                         Array.isArray(task.assignedContactIds) && 
+                         task.assignedContactIds.length > 0 ? (
                           <div className='flex items-center gap-1'>
                             <User className='h-3 w-3' />
-                            {task.assignedContactIds.length} contacts
+                            {(task.assignedContactIds as string[]).length} contacts
                           </div>
-                        )}
+                        ) : null}
 
                         {task.estimatedMinutes && (
                           <div className='flex items-center gap-1'>
@@ -500,26 +508,23 @@ function SuggestionsTab({ suggestions }: { suggestions: AiSuggestion[] }) {
 
   const approveSuggestionMutation = useMutation({
     mutationFn: (suggestionId: string) =>
-      apiRequest(`/api/ai-suggestions/${suggestionId}/approve`, { method: 'PATCH' }),
+      apiRequest('PATCH', `/api/ai-suggestions/${suggestionId}/approve`),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/ai-suggestions'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/ai-suggestions'] });
       toast({ title: 'Suggestion approved and executed' });
     },
   });
 
   const rejectSuggestionMutation = useMutation({
     mutationFn: ({ suggestionId, reason }: { suggestionId: string; reason: string }) =>
-      apiRequest(`/api/ai-suggestions/${suggestionId}/reject`, {
-        method: 'PATCH',
-        body: { reason },
-      }),
+      apiRequest('PATCH', `/api/ai-suggestions/${suggestionId}/reject`, { reason }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/ai-suggestions'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/ai-suggestions'] });
       toast({ title: 'Suggestion rejected' });
     },
   });
 
-  const pendingSuggestions = suggestions.filter((s) => s.status === 'pending');
+  const pendingSuggestions = (suggestions || []).filter((s) => s.status === 'pending');
 
   return (
     <div className='space-y-4'>
@@ -590,11 +595,11 @@ function SuggestionsTab({ suggestions }: { suggestions: AiSuggestion[] }) {
 function ProjectsTab({ projects }: { projects: Project[] }) {
   return (
     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-      {projects.map((project: Project) => (
+      {(projects || []).map((project: Project) => (
         <Card key={project.id}>
           <CardHeader>
             <div className='flex items-center gap-2'>
-              <div className='w-4 h-4 rounded-full' style={{ backgroundColor: project.color }} />
+              <div className='w-4 h-4 rounded-full' style={{ backgroundColor: project.color ?? '#3b82f6' }} />
               <CardTitle className='text-lg'>{project.name}</CardTitle>
             </div>
             {project.description && <CardDescription>{project.description}</CardDescription>}
@@ -615,7 +620,6 @@ function CreateTaskDialog({ projects, onClose }: { projects: Project[]; onClose:
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState('medium');
-  const [owner, setOwner] = useState('user');
   const [projectId, setProjectId] = useState('');
   const [dueDate, setDueDate] = useState<Date>();
   const [delegateToAI, setDelegateToAI] = useState(false);
@@ -623,14 +627,11 @@ function CreateTaskDialog({ projects, onClose }: { projects: Project[]; onClose:
   const queryClient = useQueryClient();
 
   const createTaskMutation = useMutation({
-    mutationFn: (taskData: any) =>
-      apiRequest('/api/tasks', {
-        method: 'POST',
-        body: taskData,
-      }),
+    mutationFn: (taskData: Partial<InsertTask>) =>
+      apiRequest('POST', '/api/tasks', taskData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/tasks/analytics'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/tasks'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/tasks/analytics'] });
       toast({ title: 'Task created successfully' });
       onClose();
     },
@@ -644,14 +645,14 @@ function CreateTaskDialog({ projects, onClose }: { projects: Project[]; onClose:
       return;
     }
 
-    const taskData = {
+    const taskData: Partial<InsertTask> = {
       title: title.trim(),
-      description: description.trim(),
-      priority,
-      owner: delegateToAI ? 'ai_assistant' : 'user',
+      description: description.trim() || undefined,
+      priority: priority as 'low' | 'medium' | 'high' | 'urgent',
+      owner: (delegateToAI ? 'ai_assistant' : 'user') as 'user' | 'ai_assistant',
       projectId: projectId || undefined,
-      dueDate: dueDate?.toISOString(),
-      status: 'pending',
+      dueDate: dueDate ?? undefined,
+      status: 'pending' as const,
     };
 
     createTaskMutation.mutate(taskData);
@@ -711,7 +712,7 @@ function CreateTaskDialog({ projects, onClose }: { projects: Project[]; onClose:
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value=''>No project</SelectItem>
-                {projects.map((project: Project) => (
+                {(projects || []).map((project: Project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
                   </SelectItem>
@@ -731,7 +732,7 @@ function CreateTaskDialog({ projects, onClose }: { projects: Project[]; onClose:
               </Button>
             </PopoverTrigger>
             <PopoverContent className='w-auto p-0'>
-              <Calendar mode='single' selected={dueDate} onSelect={setDueDate} initialFocus />
+              <Calendar mode='single' selected={dueDate} onSelect={setDueDate} />
             </PopoverContent>
           </Popover>
         </div>
@@ -766,13 +767,10 @@ function CreateProjectDialog({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient();
 
   const createProjectMutation = useMutation({
-    mutationFn: (projectData: any) =>
-      apiRequest('/api/projects', {
-        method: 'POST',
-        body: projectData,
-      }),
+    mutationFn: (projectData: Partial<InsertProject>) =>
+      apiRequest('POST', '/api/projects', projectData),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/projects'] });
       toast({ title: 'Project created successfully' });
       onClose();
     },
@@ -786,11 +784,13 @@ function CreateProjectDialog({ onClose }: { onClose: () => void }) {
       return;
     }
 
-    createProjectMutation.mutate({
+    const projectData: Partial<InsertProject> = {
       name: name.trim(),
-      description: description.trim(),
+      description: description.trim() || undefined,
       color,
-    });
+    };
+
+    createProjectMutation.mutate(projectData);
   };
 
   return (

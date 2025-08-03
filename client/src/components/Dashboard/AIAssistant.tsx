@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useVoiceInput } from "@/hooks/useVoiceInput";
-import { useAuth } from "@/contexts/AuthContext";
-import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.js";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { useVoiceInput } from "@/hooks/useVoiceInput.js";
+import { useAuth } from "@/contexts/AuthContext.js";
+import { apiRequest } from "@/lib/queryClient.js";
 import { Mic, MicOff, Send, Bot, Calendar, BarChart3, RefreshCw, Clock, MapPin, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -55,7 +55,7 @@ export default function AIAssistant() {
       };
       setMessages(prev => [...prev, aiMessage]);
     },
-    onError: (error) => {
+    onError: () => {
       const errorMessage: Message = {
         id: Date.now().toString(),
         content: "I'm sorry, I encountered an error. Please try again or check your OpenAI API configuration.",
@@ -179,8 +179,8 @@ export default function AIAssistant() {
                 
                 {message.isUser && (
                   <img
-                    src={user?.picture || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"}
-                    alt={user?.name || "User"}
+                    src={user?.picture ?? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"}
+                    alt={user?.name ?? "User"}
                     className="w-8 h-8 rounded-full shrink-0"
                   />
                 )}

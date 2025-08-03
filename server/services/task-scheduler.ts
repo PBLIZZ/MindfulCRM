@@ -1,7 +1,7 @@
 import cron from 'node-cron';
-import { storage } from '../storage';
-import { taskAI } from './task-ai';
-import { googleService } from './google';
+import { storage } from '../storage.js';
+import { taskAI } from './task-ai.js';
+
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -145,7 +145,7 @@ export class TaskScheduler {
             await taskAI.processAttendanceCSV(userId, csvData, csvFile);
           }
         }
-      } catch (error) {
+      } catch {
         // Folder doesn't exist or no files, which is fine
         console.log(`No attendance folder found for user ${userId}`);
       }
@@ -162,8 +162,7 @@ export class TaskScheduler {
       // Get contacts without photos who have GDPR consent
       const contacts = await storage.getContactsByUserId(userId);
       const contactsNeedingPhotos = contacts.filter(
-        (contact) =>
-          !contact.avatarUrl && contact.hasGdprConsent && contact.allowProfilePictureScraping
+        (contact) => !contact.avatarUrl && contact.hasGdprConsent
       );
 
       if (contactsNeedingPhotos.length > 0) {
@@ -172,15 +171,21 @@ export class TaskScheduler {
         );
 
         // Simulate photo enrichment results
-        const photoResults = contactsNeedingPhotos.slice(0, 5).map((contact) => ({
-          contactId: contact.id,
-          photoUrl: contact.email
-            ? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(contact.name)}`
-            : null,
-          source: 'ai_generated',
-        }));
+        const photoResults = contactsNeedingPhotos
+          .slice(0, 5)
+          .map((contact) => ({
+            contactId: contact.id,
+            photoUrl: contact.email
+              ? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(contact.name)}`
+              : null,
+            source: 'ai_generated' as const,
+          }))
+          .filter(
+            (result): result is { contactId: string; photoUrl: string; source: 'ai_generated' } =>
+              result.photoUrl !== null
+          );
 
-        if (photoResults.some((r) => r.photoUrl)) {
+        if (photoResults.length > 0) {
           await taskAI.processNewPhotos(userId, photoResults);
         }
       }
@@ -201,14 +206,14 @@ export class TaskScheduler {
         // Analyze for patterns that might suggest tasks
         const followUpNeeded = recentEmails.filter(
           (email) =>
-            email.bodyText?.toLowerCase().includes('follow up') ||
+            email.bodyText?.toLowerCase().includes('follow up') ??
             email.bodyText?.toLowerCase().includes('get back to')
         );
 
         const eventMentions = recentEmails.filter(
           (email) =>
-            email.bodyText?.toLowerCase().includes('workshop') ||
-            email.bodyText?.toLowerCase().includes('retreat') ||
+            email.bodyText?.toLowerCase().includes('workshop') ??
+            email.bodyText?.toLowerCase().includes('retreat') ??
             email.bodyText?.toLowerCase().includes('class')
         );
 

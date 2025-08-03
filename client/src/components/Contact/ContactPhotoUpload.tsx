@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/button.js'
 import { 
   Dialog, 
   DialogContent, 
@@ -8,11 +8,11 @@ import {
   DialogFooter, 
   DialogHeader, 
   DialogTitle 
-} from '@/components/ui/dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Progress } from '@/components/ui/progress'
+} from '@/components/ui/dialog.js'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js'
+import { Progress } from '@/components/ui/progress.js'
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast.js'
 
 interface ContactPhotoUploadProps {
   contactId: string
@@ -128,11 +128,11 @@ export function ContactPhotoUpload({
       })
       
       if (!response.ok) {
-        const error = await response.json()
+        const error = await response.json() as { message?: string }
         throw new Error(error.message || 'Upload failed')
       }
       
-      return response.json()
+      return response.json() as Promise<UploadResponse>
     },
     onSuccess: (data) => {
       if (data.success) {
@@ -154,7 +154,7 @@ export function ContactPhotoUpload({
     onError: (error: Error) => {
       toast({
         title: 'Upload failed',
-        description: error.message,
+        description: error.message ?? 'An unknown error occurred',
         variant: 'destructive'
       })
       setUploadProgress(0)
