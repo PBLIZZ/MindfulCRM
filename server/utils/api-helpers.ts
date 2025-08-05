@@ -12,32 +12,34 @@
  * - Frontend (client) uses undefined (for React/JavaScript conventions)
  * - Conversion happens at the API boundary
  */
-export function nullsToUndefined<T>(obj: T): T {
+type NullToUndefined<T> = T extends null ? undefined : T extends Record<string, unknown> ? { [K in keyof T]: NullToUndefined<T[K]> } : T;
+
+export function nullsToUndefined<T>(obj: T): NullToUndefined<T> {
   if (obj === null || obj === undefined) {
-    return undefined as any;
+    return undefined as NullToUndefined<T>;
   }
   if (typeof obj !== 'object') {
-    return obj;
+    return obj as NullToUndefined<T>;
   }
   if (Array.isArray(obj)) {
-    return obj.map(nullsToUndefined) as any;
+    return obj.map(nullsToUndefined) as NullToUndefined<T>;
   }
-  const newObj = {} as T;
+  const newObj = {} as Record<string, unknown>;
   for (const key in obj) {
     if (obj[key] === null) {
-      newObj[key] = undefined as any;
+      newObj[key] = undefined;
     } else {
       newObj[key] = nullsToUndefined(obj[key]);
     }
   }
-  return newObj;
+  return newObj as NullToUndefined<T>;
 }
 
 /**
  * Helper function to safely handle CalendarEventAnalysis results
  * that might be null and convert them to proper Record<string, unknown>
  */
-export function safeAnalysisData(analysis: any): Record<string, unknown> {
+export function safeAnalysisData(analysis: unknown): Record<string, unknown> {
   if (analysis === null || analysis === undefined) {
     return {};
   }

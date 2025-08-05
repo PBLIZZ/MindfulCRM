@@ -9,6 +9,7 @@ export function sanitizeForLLM(input: string): string {
   }
 
   // Remove control characters and non-printable characters
+  // eslint-disable-next-line no-control-regex
   let sanitized = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
   // Remove potential prompt hijacking patterns
@@ -97,4 +98,43 @@ export function sanitizeEmailContent(content: string): string {
   
   // Remove email addresses that could contain instructions
   return sanitized.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_ADDRESS]');
+}
+
+/**
+ * Sanitize response data by removing sensitive fields and cleaning text content
+ */
+export function sanitizeResponse<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return data.map(item => sanitizeResponse(item)) as T;
+  }
+
+  if (typeof data === 'object') {
+    const sanitized = { ...data } as Record<string, unknown>;
+    
+    // Remove sensitive fields that should never be exposed in API responses
+    const sensitiveFields = ['password', 'passwordHash', 'secret', 'token', 'privateKey', 'apiKey'];
+    for (const field of sensitiveFields) {
+      if (field in sanitized) {
+        delete sanitized[field];
+      }
+    }
+
+    // Recursively sanitize nested objects
+    for (const [key, value] of Object.entries(sanitized)) {
+      if (typeof value === 'string') {
+        sanitized[key] = sanitizeForLLM(value);
+      } else if (typeof value === 'object' && value !== null) {
+        sanitized[key] = sanitizeResponse(value);
+      }
+    }
+
+    return sanitized as T;
+  }
+
+  return data;
 }
