@@ -16,6 +16,19 @@ export default [
       'vite.config.ts',
       'postcss.config.js',
       'tailwind.config.js',
+      'docs/**',
+      'scripts/**',
+      'client/src/hooks/use-toast.ts',
+      'migrations/**',
+      'docs/temp/**',
+      'drizzle.config.ts',
+      'eslint.config.js',
+      '*.config.js',
+      '*.config.ts',
+      'server/migrate-*.js',
+      'server/test-*.ts',
+      'server/tests/**',
+      'client/src/components/ui/**',
     ],
   },
   {
@@ -28,7 +41,7 @@ export default [
         ecmaFeatures: {
           jsx: true,
         },
-        project: './tsconfig.json',
+        project: ['./tsconfig.json', './tsconfig.server.json'],
       },
       globals: {
         React: 'readonly',

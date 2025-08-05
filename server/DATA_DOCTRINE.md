@@ -84,3 +84,52 @@ app.get('/api/contacts/:id', requireAuth, async (req: Request, res: Response) =>
   res.json(nullsToUndefined(contactFromDb));
 });
 ```
+
+You're right to ask for clarification on this. While warnings are less critical than errors, a clean codebase should have none. In a production readiness sprint, eliminating noise is key to focusing on what matters.
+
+Here is the official **MindfulCRM Doctrine on Warnings**.
+
+---
+
+### 4. The Warning Cleanup Doctrine
+
+#### `no-console` Warnings
+
+- **The Law:** The `console.log()` function is **forbidden** in production application code (both client and server). It is a tool for temporary, local debugging only. All instances must be removed before a merge.
+- **The Rationale:** Console logs expose internal application data and logic to the browser console, which is a potential information leak. They also create unnecessary noise in server logs, making it harder to find real errors.
+- **The Fix:**
+  - **For debugging information:** Delete the `console.log()` statement entirely once you are done with it.
+  - **For actual errors:** Replace `console.log(error)` with our official `logError('Context of what failed', error)` utility from `server/utils/error-handling.ts`. This ensures errors are handled consistently.
+  - **For analytics or user tracking (rare):** If you have a legitimate reason to log an event, use a dedicated analytics service, not `console.log`.
+
+**Atomic Prompt to Fix:**
+"Search the entire project for the ESLint rule `no-console`. For every warning found:
+
+1. If the log is for debugging, delete the entire line.
+2. If the log is capturing a legitimate error in a `catch` block, replace it with a call to our `logError` utility.
+   Do not leave any `console.log`, `console.warn`, or `console.error` statements in the final code."
+
+---
+
+#### **2. `react-refresh/only-export-components` Warnings**
+
+- **The Law:** A file containing a React component (using JSX) should **only** export React components. Any non-component exports (like constants, helper functions, or types) must be moved to their own separate files.
+- **The Rationale:** This warning is from the "Fast Refresh" (Hot Reloading) library for React. For it to work reliably, it needs to know that a file contains _only_ components. When you export a mix of components and other values, it can get confused and cause the hot reload to fail or behave unpredictably. Following this rule improves the developer experience.
+- **The Fix:**
+  - Identify the file with the warning (e.g., `client/src/components/ui/button.tsx`).
+  - Identify the non-component export (e.g., `export const buttonVariants = ...`).
+  - Create a new file, often in a `lib/` or `utils/` subdirectory (e.g., `client/src/lib/variants.ts`).
+  - Move the non-component export (`buttonVariants`) into this new file.
+  - Update the original file and any other files that were using it to import from the new location.
+
+**Atomic Prompt to Fix:**
+"The file `client/src/components/ui/button.tsx` is throwing a `react-refresh/only-export-components` warning.
+
+1. Create a new file at `client/src/lib/variants.ts`.
+2. Find the `buttonVariants` constant in `button.tsx` and move the entire constant definition into `client/src/lib/variants.ts`.
+3. In `button.tsx`, import `buttonVariants` from the new `lib/variants.ts` file.
+4. Apply this same pattern to any other component file that has this warning."
+
+---
+
+Execute these two directives. They will eliminate the majority of the **35 warnings** and bring us even closer to a perfectly clean codebase.

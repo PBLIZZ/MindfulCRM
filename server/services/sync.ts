@@ -1,6 +1,6 @@
 import cron from 'node-cron';
-import { storage } from '../storage.js';
-import { googleService } from './google.js';
+import { storage } from '../data/index.js';
+import { googleService } from '../providers/google.provider.js';
 import type { User } from '../../shared/schema.js';
 
 export class SyncService {
@@ -83,7 +83,9 @@ export class SyncService {
       }
 
       const duration = Date.now() - startTime;
-      console.log(`Sync completed: ${successCount} successful, ${errorCount} failed (${duration}ms)`);
+      console.log(
+        `Sync completed: ${successCount} successful, ${errorCount} failed (${duration}ms)`
+      );
     } catch (error) {
       console.error('Sync service error:', error);
       throw error;
@@ -96,7 +98,7 @@ export class SyncService {
     }
 
     try {
-      const user = await storage.getUser(userId);
+      const user = await storage.users.findById(userId);
       if (!user) {
         throw new Error(`User not found: ${userId}`);
       }
@@ -127,7 +129,7 @@ export class SyncService {
     }
 
     try {
-      const user = await storage.getUser(userId);
+      const user = await storage.users.findById(userId);
       if (!user) {
         throw new Error(`User not found: ${userId}`);
       }
@@ -141,7 +143,7 @@ export class SyncService {
 
       // Use incremental sync for regular scheduled syncs
       await googleService.syncCalendar(user, {
-        syncType: 'incremental'
+        syncType: 'incremental',
       });
 
       const duration = Date.now() - startTime;
@@ -158,7 +160,7 @@ export class SyncService {
     }
 
     try {
-      const user = await storage.getUser(userId);
+      const user = await storage.users.findById(userId);
       if (!user) {
         throw new Error(`User not found: ${userId}`);
       }
@@ -185,14 +187,14 @@ export class SyncService {
       // Get all users from the database with proper typing
       const { db } = await import('../db.js');
       const { users } = await import('../../shared/schema.js');
-      
+
       const allUsers = await db.select().from(users);
-      
+
       // Filter out users without required tokens
       const validUsers = allUsers.filter((user): user is User => {
         return !!(user?.accessToken && user?.refreshToken && user?.email);
       });
-      
+
       console.log(`Found ${allUsers.length} total users, ${validUsers.length} with valid tokens`);
       return validUsers;
     } catch (error) {

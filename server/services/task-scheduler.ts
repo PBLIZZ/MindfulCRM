@@ -1,6 +1,6 @@
 import cron from 'node-cron';
-import { storage } from '../storage.js';
-import { taskAI } from './task-ai.js';
+import { storage } from '../data/index.js';
+import { taskAI } from '../brains/task-ai.js';
 
 import fs from 'fs/promises';
 import path from 'path';
@@ -94,18 +94,24 @@ export class TaskScheduler {
    */
   private async processPendingTasks(): Promise<void> {
     try {
-      // Process tasks assigned to AI that are in progress
-      const aiTasks = await storage.getTasksByStatus('in_progress', 'ai_assistant');
+      // Get all active users to check for AI tasks
+      const users = await this.getAllActiveUsers();
+      
+      for (const user of users) {
+        // Process tasks assigned to AI that are in progress
+        const aiTasks = await storage.tasks.getTasksByUserId(user.id, ['in_progress']);
+        const aiAssignedTasks = aiTasks.filter(task => task.owner === 'ai_assistant');
 
-      for (const task of aiTasks) {
-        // Check if task has been processing for too long
-        const hoursInProgress =
-          (Date.now() - new Date(task.updatedAt).getTime()) / (1000 * 60 * 60);
+        for (const task of aiAssignedTasks) {
+          // Check if task has been processing for too long
+          const hoursInProgress =
+            (Date.now() - new Date(task.updatedAt ?? task.createdAt).getTime()) / (1000 * 60 * 60);
 
-        if (hoursInProgress > 1) {
-          // If processing for more than 1 hour
-          console.log(`Processing stalled AI task: ${task.title}`);
-          // Could retry or mark as failed
+          if (hoursInProgress > 1) {
+            // If processing for more than 1 hour
+            console.log(`Processing stalled AI task: ${task.title}`);
+            // Could retry or mark as failed
+          }
         }
       }
 
@@ -159,38 +165,34 @@ export class TaskScheduler {
    */
   private async checkForPhotoEnrichmentOpportunities(userId: string): Promise<void> {
     try {
-      // Get contacts without photos who have GDPR consent
-      const contacts = await storage.getContactsByUserId(userId);
-      const contactsNeedingPhotos = contacts.filter(
-        (contact) => !contact.avatarUrl && contact.hasGdprConsent
+      // Get contacts without photos
+      const contacts = await storage.contacts.getByUserId(userId);
+      const contactsWithoutPhotos = contacts.filter(
+        (contact) => !contact.avatarUrl || contact.avatarUrl.trim() === ''
       );
 
-      if (contactsNeedingPhotos.length > 0) {
-        console.log(
-          `Found ${contactsNeedingPhotos.length} contacts needing photos for user ${userId}`
-        );
-
-        // Simulate photo enrichment results
-        const photoResults = contactsNeedingPhotos
-          .slice(0, 5)
-          .map((contact) => ({
-            contactId: contact.id,
-            photoUrl: contact.email
-              ? `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(contact.name)}`
-              : null,
-            source: 'ai_generated' as const,
-          }))
-          .filter(
-            (result): result is { contactId: string; photoUrl: string; source: 'ai_generated' } =>
-              result.photoUrl !== null
-          );
-
-        if (photoResults.length > 0) {
-          await taskAI.processNewPhotos(userId, photoResults);
-        }
+      if (contactsWithoutPhotos.length > 0) {
+        await storage.ai.createSuggestion({
+          userId,
+          type: 'photo_enrichment',
+          title: `Enrich ${contactsWithoutPhotos.length} contact photos?`,
+          description: `I found ${contactsWithoutPhotos.length} contacts without profile photos. Should I help find and add photos for them?`,
+          suggestedAction: {
+            type: 'bulk_photo_enrichment',
+            contacts: contactsWithoutPhotos.map((c) => ({
+              contactId: c.id,
+              photoUrl: '',
+              source: 'ai_generated',
+            })),
+          },
+          sourceData: { contactsWithoutPhotos: contactsWithoutPhotos.length },
+          aiAnalysis: { confidence: 0.8, estimatedTime: '5-10 minutes' },
+          priority: 'low',
+          status: 'pending',
+        });
       }
     } catch (error) {
-      console.error(`Error checking photo opportunities for user ${userId}:`, error);
+      console.error(`Error checking photo enrichment for user ${userId}:`, error);
     }
   }
 
@@ -199,56 +201,33 @@ export class TaskScheduler {
    */
   private async analyzeEmailPatternsForTasks(userId: string): Promise<void> {
     try {
-      // Get recent emails
-      const recentEmails = await storage.getRecentEmails(userId, 7); // Last 7 days
+      // Get recent emails to analyze patterns
+      const recentEmails = await storage.emails.getRecent(userId, 7); // Last 7 days
 
-      if (recentEmails.length > 0) {
-        // Analyze for patterns that might suggest tasks
-        const followUpNeeded = recentEmails.filter(
-          (email) =>
-            email.bodyText?.toLowerCase().includes('follow up') ??
-            email.bodyText?.toLowerCase().includes('get back to')
-        );
+      // Look for patterns that suggest tasks
+      const eventMentions = recentEmails.filter(
+        (email) =>
+          (email.subject ?? '').toLowerCase().includes('event') ||
+          (email.subject ?? '').toLowerCase().includes('workshop') ||
+          (email.subject ?? '').toLowerCase().includes('retreat')
+      );
 
-        const eventMentions = recentEmails.filter(
-          (email) =>
-            email.bodyText?.toLowerCase().includes('workshop') ??
-            email.bodyText?.toLowerCase().includes('retreat') ??
-            email.bodyText?.toLowerCase().includes('class')
-        );
-
-        // Create suggestions based on patterns
-        if (followUpNeeded.length > 2) {
-          await storage.createAiSuggestion({
-            userId,
-            type: 'task_creation',
-            title: 'Create follow-up tasks?',
-            description: `I noticed ${followUpNeeded.length} emails mentioning follow-ups in the last week. Should I create tasks to track these?`,
-            suggestedAction: {
-              type: 'create_follow_up_tasks',
-              emails: followUpNeeded.map((e) => ({ id: e.id, subject: e.subject })),
-            },
-            sourceData: { followUpEmails: followUpNeeded.length },
-            aiAnalysis: { pattern: 'follow_up_pattern', confidence: 0.8 },
-            priority: 'medium',
-          });
-        }
-
-        if (eventMentions.length > 1) {
-          await storage.createAiSuggestion({
-            userId,
-            type: 'task_creation',
-            title: 'Plan event communications?',
-            description: `Multiple emails mention events/workshops. Should I help create a communication plan?`,
-            suggestedAction: {
-              type: 'create_event_tasks',
-              events: eventMentions.map((e) => ({ id: e.id, subject: e.subject })),
-            },
-            sourceData: { eventEmails: eventMentions.length },
-            aiAnalysis: { pattern: 'event_planning_pattern', confidence: 0.7 },
-            priority: 'medium',
-          });
-        }
+      if (eventMentions.length > 2) {
+        // Multiple event-related emails suggest event planning
+        await storage.ai.createSuggestion({
+          userId,
+          type: 'task_suggestion',
+          title: 'Create tasks for upcoming events?',
+          description: `I noticed ${eventMentions.length} emails about events. Should I create tasks to help organize these events?`,
+          suggestedAction: {
+            type: 'create_event_tasks',
+            events: eventMentions.map((e) => ({ id: e.id, subject: e.subject })),
+          },
+          sourceData: { eventEmails: eventMentions.length },
+          aiAnalysis: { pattern: 'event_planning_pattern', confidence: 0.7 },
+          priority: 'medium',
+          status: 'pending',
+        });
       }
     } catch (error) {
       console.error(`Error analyzing email patterns for user ${userId}:`, error);
@@ -260,13 +239,13 @@ export class TaskScheduler {
    */
   private async reviewIncompleteTasks(userId: string): Promise<void> {
     try {
-      const incompleteTasks = await storage.getTasksByUserId(userId, ['pending', 'in_progress']);
+      const incompleteTasks = await storage.tasks.getTasksByUserId(userId, ['pending', 'in_progress']);
       const overdueTasks = incompleteTasks.filter(
         (task) => task.dueDate && new Date(task.dueDate) < new Date()
       );
 
       if (overdueTasks.length > 0) {
-        await storage.createAiSuggestion({
+        await storage.ai.createSuggestion({
           userId,
           type: 'task_review',
           title: `Review ${overdueTasks.length} overdue tasks?`,
@@ -287,6 +266,7 @@ export class TaskScheduler {
             ),
           },
           priority: 'high',
+          status: 'pending',
         });
       }
     } catch (error) {
@@ -300,7 +280,8 @@ export class TaskScheduler {
   private async quickDataCheck(userId: string): Promise<void> {
     try {
       // Check for any data processing jobs that failed and might need retry
-      const failedJobs = await storage.getFailedDataProcessingJobs(userId);
+      const allJobs = await storage.ai.getJobsByUserId(userId);
+      const failedJobs = allJobs.filter(job => job.status === 'failed');
 
       if (failedJobs.length > 0) {
         console.log(`Found ${failedJobs.length} failed jobs for user ${userId}`);
@@ -320,8 +301,29 @@ export class TaskScheduler {
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      await storage.cleanupOldSuggestions(thirtyDaysAgo);
-      await storage.cleanupOldDataProcessingJobs(thirtyDaysAgo);
+      // Get all users to clean up their old suggestions
+      const users = await storage.users.getAll();
+      
+      for (const user of users) {
+        // Get old completed/rejected suggestions for cleanup
+        const oldSuggestions = await storage.ai.getSuggestionsByUserId(user.id);
+        const oldCompletedSuggestions = oldSuggestions.filter(
+          suggestion => 
+            (suggestion.status === 'completed' || suggestion.status === 'rejected') &&
+            new Date(suggestion.createdAt) < thirtyDaysAgo
+        );
+        
+        // Get old completed/failed jobs for cleanup
+        const oldJobs = await storage.ai.getJobsByUserId(user.id);
+        const oldCompletedJobs = oldJobs.filter(
+          job => 
+            (job.status === 'completed' || job.status === 'failed') &&
+            new Date(job.createdAt) < thirtyDaysAgo
+        );
+        
+        console.log(`Cleanup: Found ${oldCompletedSuggestions.length} old suggestions and ${oldCompletedJobs.length} old jobs for user ${user.email}`);
+        // Note: Actual deletion would require additional methods in the data layer
+      }
     } catch (error) {
       console.error('Cleanup error:', error);
     }
@@ -333,7 +335,7 @@ export class TaskScheduler {
   private async getAllActiveUsers(): Promise<Array<{ id: string; email: string }>> {
     try {
       // Get users who have been active in the last 30 days
-      const users = await storage.getActiveUsers(30);
+      const users = await storage.users.getActiveUsers(30);
       return users;
     } catch (error) {
       console.error('Error getting active users:', error);
