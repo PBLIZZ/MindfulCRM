@@ -83,8 +83,8 @@ export function DeleteContactDialog({
         description: 'The contact and all associated data have been permanently deleted.',
       })
       
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] })
+      void queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
+      void queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] })
       
       onOpenChange(false)
       setCascadeInfo(null)
@@ -121,7 +121,7 @@ export function DeleteContactDialog({
           photos: 0
         })
       }
-    } catch (error) {
+    } catch {
       // Failed to load cascade info
       setCascadeInfo({
         interactions: 0,
@@ -138,7 +138,7 @@ export function DeleteContactDialog({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && contact && !cascadeInfo) {
-      loadCascadeInfo(contact.id)
+      void loadCascadeInfo(contact.id)
     } else if (!newOpen) {
       setCascadeInfo(null)
     }

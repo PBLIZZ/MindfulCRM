@@ -24,6 +24,18 @@ import {
 import { useToast } from '@/hooks/use-toast.js'
 import type { Contact } from './ContactsTable.js'
 
+interface ImageUploadResponse {
+  success: boolean
+  avatarUrl: string
+  error?: string
+}
+
+interface ContactUpdateResponse {
+  success: boolean
+  contact: Contact
+  error?: string
+}
+
 interface EditContactModalProps {
   contact: Contact | null
   open: boolean
@@ -136,21 +148,21 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
   useEffect(() => {
     if (contact) {
       setFormData({
-        name: contact.name || '',
-        email: contact.email || '',
-        phone: contact.phone || '',
-        notes: contact.notes || '',
-        lifecycleStage: contact.lifecycleStage || 'discovery',
-        tags: contact.tags || []
+        name: contact.name ?? '',
+        email: contact.email ?? '',
+        phone: contact.phone ?? '',
+        notes: contact.notes ?? '',
+        lifecycleStage: contact.lifecycleStage ?? 'discovery',
+        tags: contact.tags ?? []
       })
-      setImagePreview(contact.avatarUrl || '')
+      setImagePreview(contact.avatarUrl ?? '')
       setImageFile(null)
     }
   }, [contact])
 
   // Update contact mutation
   const updateContactMutation = useMutation({
-    mutationFn: async (data: ContactUpdateData & { imageFile?: File }) => {
+    mutationFn: async (data: ContactUpdateData & { imageFile?: File }): Promise<ContactUpdateResponse> => {
       if (!contact) throw new Error('No contact selected')
       
       let avatarUrl = contact.avatarUrl
@@ -173,7 +185,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
           throw new Error('Failed to upload image')
         }
         
-        const imageResult = await imageResponse.json()
+        const imageResult = await imageResponse.json() as ImageUploadResponse
         avatarUrl = imageResult.avatarUrl
       }
       
@@ -194,10 +206,10 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
         throw new Error('Failed to update contact')
       }
       
-      return response.json()
+      return await response.json() as ContactUpdateResponse
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
+      void queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
       toast({
         title: 'Contact updated',
         description: 'Contact has been successfully updated.',
@@ -249,7 +261,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
         title: 'Image processed',
         description: `Image converted to WebP format (${Math.round(webpFile.size / 1024)}KB)`,
       })
-    } catch (error) {
+    } catch {
       toast({
         title: 'Image processing failed',
         description: 'Failed to process the image. Please try another file.',
@@ -263,7 +275,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
   const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      handleImageSelect(file)
+      void handleImageSelect(file)
     }
   }
 
@@ -275,7 +287,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
     event.preventDefault()
     const file = event.dataTransfer.files[0]
     if (file) {
-      handleImageSelect(file)
+      void handleImageSelect(file)
     }
   }
 
@@ -298,7 +310,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
     
     setFormData(prev => ({
       ...prev,
-      tags: [...(prev.tags || []), newTag]
+      tags: [...(prev.tags ?? []), newTag]
     }))
     setNewTagName('')
   }
@@ -306,7 +318,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
   const removeTag = (tagId: string) => {
     setFormData(prev => ({
       ...prev,
-      tags: prev.tags?.filter(tag => tag.id !== tagId) || []
+      tags: prev.tags?.filter(tag => tag.id !== tagId) ?? []
     }))
   }
 
@@ -324,7 +336,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
     
     updateContactMutation.mutate({
       ...formData,
-      imageFile: imageFile || undefined
+                  imageFile: imageFile ?? undefined
     })
   }
 

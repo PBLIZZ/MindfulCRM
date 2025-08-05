@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { ColumnDef, PaginationState, SortingState, ColumnFiltersState, VisibilityState } from "@tanstack/react-table"
+import type { ColumnDef, PaginationState, SortingState, ColumnFiltersState, VisibilityState } from "@tanstack/react-table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js"
 import { Badge } from "@/components/ui/badge.js"
 import { Button } from "@/components/ui/button.js"
@@ -67,8 +67,8 @@ export type Contact = {
   lastContact?: string
   sentiment?: number
   engagementTrend?: 'improving' | 'stable' | 'declining'
-  extractedFields?: Record<string, any>
-  revenueData?: Record<string, any>
+  extractedFields?: Record<string, unknown>
+  revenueData?: Record<string, unknown>
   referralCount?: number
   createdAt: string
   updatedAt: string
@@ -80,7 +80,7 @@ interface ContactsTableProps {
   onEditContact?: (contact: Contact) => void
   onDeleteContact?: (contact: Contact) => void
   onBulkAction?: (action: string, contactIds: string[]) => void
-  onExportData?: (format: string) => void
+  _onExportData?: (format: string) => void
   onAddContact?: () => void
   onAITool?: (tool: string) => void
 }
@@ -153,7 +153,7 @@ interface TablePreferences {
   pageSize: number;
   columnVisibility: Record<string, boolean>;
   sorting: SortingState;
-  filters: any[];
+  filters: Array<{ id: string; value: unknown }>;
 }
 
 const loadPreferences = (): TablePreferences => {
@@ -179,7 +179,7 @@ export function ContactsTable({
   onEditContact, 
   onDeleteContact,
   onBulkAction,
-  onExportData,
+  _onExportData,
   onAddContact,
   onAITool,
 }: ContactsTableProps) {
@@ -290,9 +290,9 @@ export function ContactsTable({
               variant="ghost"
               size="sm"
               className="h-4 w-4 p-0"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation()
-                navigator.clipboard.writeText(email)
+                await navigator.clipboard.writeText(email)
               }}
             >
               📋
@@ -411,7 +411,7 @@ export function ContactsTable({
       header: "Tags",
       cell: ({ row }) => {
         const contact = row.original
-        const tags = contact.tags || []
+        const tags = contact.tags ?? []
         const displayTags = tags.slice(0, 3)
         const extraCount = tags.length - 3
 
@@ -449,8 +449,8 @@ export function ContactsTable({
       cell: ({ row }) => {
         const contact = row.original
         const notes = contact.notes
-        const voiceNotes = contact.voiceNotes || []
-        const hasContent = notes || voiceNotes.length > 0
+        const voiceNotes = contact.voiceNotes ?? []
+        const hasContent = notes ?? voiceNotes.length > 0
 
         return (
           <div className="flex items-center space-x-2">
@@ -481,7 +481,7 @@ export function ContactsTable({
     },
     ...dynamicColumns.map(fieldName => ({
       id: `extracted_${fieldName}`,
-      accessorFn: (row: Contact) => row.extractedFields?.[fieldName] || '',
+      accessorFn: (row: Contact) => row.extractedFields?.[fieldName] ?? '',
       header: fieldName.charAt(0).toUpperCase() + fieldName.slice(1),
       cell: ({ getValue }: { getValue: () => unknown }) => {
         const value = getValue() as string | number | boolean | null | undefined
@@ -553,11 +553,11 @@ export function ContactsTable({
       // Global search filter
       const searchMatch = !debouncedGlobalFilter ||
         contact.name.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ||
-        contact.email?.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ||
-        contact.phone?.includes(debouncedGlobalFilter) ||
-        Object.values(contact.extractedFields || {}).some(value => 
+        (contact.email?.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ??
+        contact.phone?.includes(debouncedGlobalFilter) ??
+        Object.values(contact.extractedFields ?? {}).some(value => 
           String(value).toLowerCase().includes(debouncedGlobalFilter.toLowerCase())
-        )
+        ))
       
       // Lifecycle filter
       const lifecycleMatch = lifecycleFilter === 'all' || contact.lifecycleStage === lifecycleFilter

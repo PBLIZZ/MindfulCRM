@@ -21,6 +21,11 @@ interface Tag {
   color: string;
 }
 
+interface TagErrorResponse {
+  error: string;
+  message?: string;
+}
+
 interface TagSelectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -65,7 +70,7 @@ export function TagSelectionDialog({
         },
       });
       if (!response.ok) throw new Error('Failed to fetch tags');
-      return response.json();
+      return await response.json() as Tag[];
     },
   });
 
@@ -82,16 +87,15 @@ export function TagSelectionDialog({
       });
       
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMessage = errorData.error || 'Failed to create tag';
+        const errorData = await response.json().catch(() => ({ error: 'Failed to create tag' })) as TagErrorResponse;
+        const errorMessage = errorData.message ?? 'Failed to create tag';
         throw new Error(errorMessage);
       }
       
-      return response.json();
+      return response.json() as Promise<Tag>;
     },
-    onSuccess: (newTag) => {
-      console.log('Tag created successfully:', newTag);
-      queryClient.invalidateQueries({ queryKey: ['/api/tags'] });
+    onSuccess: async (newTag: Tag) => {
+      await queryClient.invalidateQueries({ queryKey: ['/api/tags'] });
       onTagSelected(newTag);
       setIsCreatingNew(false);
       setNewTagName('');
@@ -103,7 +107,6 @@ export function TagSelectionDialog({
       });
     },
     onError: (error) => {
-      console.error('Tag creation error:', error);
       toast({
         title: 'Error creating tag',
         description: error instanceof Error ? error.message : 'Failed to create new tag. Please try again.',

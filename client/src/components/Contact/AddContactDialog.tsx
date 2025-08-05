@@ -53,6 +53,19 @@ const contactSchema = z.object({
 
 type ContactFormData = z.infer<typeof contactSchema>;
 
+// Additional types for the API request
+interface ExtractedFields {
+  company?: string;
+  jobTitle?: string;
+  website?: string;
+  linkedinUrl?: string;
+  address?: string;
+}
+
+interface ContactApiData extends Omit<ContactFormData, 'company' | 'jobTitle' | 'website' | 'linkedinUrl' | 'address'> {
+  extractedFields?: ExtractedFields;
+}
+
 interface AddContactDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -84,11 +97,11 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
   });
 
   const createContact = useMutation({
-    mutationFn: (data: ContactFormData) =>
+    mutationFn: (data: ContactApiData) =>
       apiRequest('POST', '/api/contacts', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/contacts'] });
+      void queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] });
       toast({
         title: 'Contact added',
         description: 'The contact has been successfully added to your list.',
@@ -110,7 +123,7 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
     const { company, jobTitle, website, linkedinUrl, address, ...standardFields } = data;
     
     // Build extracted fields object
-    const extractedFields: Record<string, any> = {};
+    const extractedFields: ExtractedFields = {};
     if (company) extractedFields.company = company;
     if (jobTitle) extractedFields.jobTitle = jobTitle;
     if (website) extractedFields.website = website;
@@ -120,14 +133,17 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
     // Clean up empty strings from standard fields
     const cleanData = Object.fromEntries(
       Object.entries(standardFields).filter(([, value]) => value !== '' && value !== null && value !== undefined)
-    );
+    ) as Omit<ContactFormData, 'company' | 'jobTitle' | 'website' | 'linkedinUrl' | 'address'>;
+    
+    // Create final API data object
+    const apiData: ContactApiData = { ...cleanData };
     
     // Add extracted fields if not empty
     if (Object.keys(extractedFields).length > 0) {
-      (cleanData as any).extractedFields = extractedFields;
+      apiData.extractedFields = extractedFields;
     }
     
-    createContact.mutate(cleanData as ContactFormData);
+    createContact.mutate(apiData);
   };
 
   return (

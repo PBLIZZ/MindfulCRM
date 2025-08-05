@@ -129,12 +129,12 @@ export function ContactPhotoUpload({
       
       if (!response.ok) {
         const error = await response.json() as { message?: string }
-        throw new Error(error.message || 'Upload failed')
+        throw new Error(error.message ?? 'Upload failed')
       }
       
       return response.json() as Promise<UploadResponse>
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
         toast({
           title: 'Photo uploaded successfully',
@@ -142,7 +142,7 @@ export function ContactPhotoUpload({
         })
         
         // Invalidate contacts query to refresh the data
-        queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
+        await queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
         
         // Close dialog and reset state
         onOpenChange(false)
@@ -215,10 +215,10 @@ export function ContactPhotoUpload({
           description: 'Contact photo has been removed.'
         })
         
-        queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
+        await queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
         onOpenChange(false)
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'Failed to remove photo',
         description: 'Please try again.',
@@ -258,7 +258,7 @@ export function ContactPhotoUpload({
           <div className="flex justify-center">
             <Avatar className="h-24 w-24">
               <AvatarImage 
-                src={preview || currentPhotoUrl} 
+                src={preview ?? currentPhotoUrl} 
                 alt={contactName} 
               />
               <AvatarFallback className="text-2xl">
