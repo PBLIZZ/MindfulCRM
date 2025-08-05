@@ -1,11 +1,6 @@
 import dotenv from 'dotenv';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 dotenv.config();
-
-// Type definitions for the Mistral API structure
-interface MistralMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
 
 interface MistralResponse {
   choices: Array<{
@@ -39,7 +34,7 @@ class MistralService {
    */
   async generateCompletion(
     model: SupportedMistralModel,
-    messages: MistralMessage[],
+    messages: ChatCompletionMessageParam[],
     isJson: boolean = false
   ): Promise<string> {
     if (!this.apiKey) {
@@ -55,7 +50,13 @@ class MistralService {
         },
         body: JSON.stringify({
           model,
-          messages,
+          messages: messages.map(msg => ({
+            role: msg.role,
+            content: typeof msg.content === 'string' ? msg.content : 
+              Array.isArray(msg.content) ? 
+                msg.content.filter(part => part.type === 'text').map(part => part.text).join(' ') : 
+                ''
+          })),
           response_format: isJson ? { type: 'json_object' } : undefined,
           temperature: 0.1, // A low temperature is good for structured tasks
         }),

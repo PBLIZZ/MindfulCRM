@@ -16,6 +16,28 @@ interface Message {
   timestamp: Date;
 }
 
+interface AIChatResponse {
+  response: string;
+  context?: unknown;
+}
+
+interface CalendarAttendee {
+  email: string;
+  displayName?: string;
+}
+
+interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  startTime: string;
+  endTime: string;
+  attendees?: CalendarAttendee[];
+  calendarName?: string;
+  calendarColor?: string;
+}
+
 export default function AIAssistant() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([
@@ -29,7 +51,7 @@ export default function AIAssistant() {
   const [inputMessage, setInputMessage] = useState("");
   
   // Fetch upcoming calendar events
-  const { data: upcomingEvents, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
+  const { data: upcomingEvents, isLoading: eventsLoading, refetch: refetchEvents } = useQuery<CalendarEvent[]>({
     queryKey: ['/api/calendar/upcoming?limit=5'],
   });
   
@@ -44,9 +66,9 @@ export default function AIAssistant() {
         message,
         context: { userId: user?.id }
       });
-      return response.json();
+      return response.json() as Promise<AIChatResponse>;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: AIChatResponse) => {
       const aiMessage: Message = {
         id: Date.now().toString(),
         content: data.response,
@@ -73,7 +95,7 @@ export default function AIAssistant() {
     },
     onSuccess: () => {
       // Refetch events after sync
-      refetchEvents();
+      void refetchEvents();
     },
   });
 
@@ -284,17 +306,17 @@ export default function AIAssistant() {
             </div>
           ) : upcomingEvents && Array.isArray(upcomingEvents) && upcomingEvents.length > 0 ? (
             <div className="space-y-3">
-              {upcomingEvents.map((event: any) => {
+              {upcomingEvents.map((event: CalendarEvent) => {
                 const startTime = new Date(event.startTime);
                 const endTime = event.endTime ? new Date(event.endTime) : null;
-                const attendees = event.attendees ? (typeof event.attendees === 'string' ? JSON.parse(event.attendees) : event.attendees) : [];
+                const attendees = event.attendees ?? [];
                 
                 return (
                   <div key={event.id} className="border rounded-lg p-3 space-y-2">
                     {/* Calendar and Title */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-sm leading-tight">{event.summary || 'Untitled Event'}</h4>
+                        <h4 className="font-medium text-sm leading-tight">{event.summary ?? 'Untitled Event'}</h4>
                         {event.calendarName && (
                           <div className="flex items-center gap-1 mt-1">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -339,7 +361,7 @@ export default function AIAssistant() {
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Users className="h-3 w-3" />
                         <span className="break-words">
-                          {attendees.slice(0, 2).map((attendee: any) => attendee.email || attendee.displayName).join(', ')}
+                          {attendees.slice(0, 2).map((attendee: CalendarAttendee) => attendee.email || attendee.displayName).join(', ')}
                           {attendees.length > 2 && ` +${attendees.length - 2} more`}
                         </span>
                       </div>

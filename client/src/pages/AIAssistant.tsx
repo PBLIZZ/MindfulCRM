@@ -21,6 +21,17 @@ import {
   FileText,
 } from "lucide-react";
 
+// Speech Recognition types
+type SpeechRecognitionEvent = Event & { 
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+};
+
 interface Message {
   id: string;
   content: string;
@@ -37,6 +48,26 @@ interface Insight {
   createdAt: string;
 }
 
+// Speech Recognition API types for window extensions
+
+
+
+// Calendar event types
+interface CalendarEventExtractedData {
+  isRelevant?: boolean;
+  isClientRelated?: boolean;
+  confidence?: number;
+  sessionType?: string;
+  clientEmails?: string[];
+}
+
+interface UpcomingEvent {
+  id: string;
+  summary: string;
+  startTime: string;
+  extractedData?: CalendarEventExtractedData;
+}
+
 
 
 export default function AIAssistant() {
@@ -47,27 +78,35 @@ export default function AIAssistant() {
   const { toast } = useToast();
 
   // Fetch AI insights
-  const { data: insights } = useQuery({
+  const { data: insights } = useQuery<Insight[]>({
     queryKey: ["/api/ai/insights"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/ai/insights");
+      return response.json() as Promise<Insight[]>;
+    },
     refetchInterval: 300000, // Refetch every 5 minutes
   });
 
   // Fetch upcoming calendar events with AI analysis
-  const { data: upcomingEvents } = useQuery({
+  const { data: upcomingEvents } = useQuery<UpcomingEvent[]>({
     queryKey: ["/api/calendar/upcoming"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/calendar/upcoming?limit=10");
-      return response.json();
+      return response.json() as Promise<UpcomingEvent[]>;
     },
     refetchInterval: 600000, // Refetch every 10 minutes
   });
 
+  interface ChatResponse {
+    message: string;
+  }
+
   const chatMutation = useMutation({
-    mutationFn: async (message: string) => {
+    mutationFn: async (message: string): Promise<ChatResponse> => {
       const response = await apiRequest("POST", "/api/ai/chat", { message });
-      return response.json();
+      return response.json() as Promise<ChatResponse>;
     },
-    onSuccess: (response) => {
+    onSuccess: (response: ChatResponse) => {
       const assistantMessage: Message = {
         id: Date.now().toString() + "_assistant",
         content: response.message,
@@ -119,46 +158,54 @@ export default function AIAssistant() {
   };
 
   const startVoiceRecognition = () => {
-    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+    if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       toast({
-        title: "Voice Recognition Not Supported",
-        description: "Your browser doesn't support voice recognition.",
-        variant: "destructive",
+        title: 'Voice Recognition Not Supported',
+        description: 'Your browser does not support speech recognition.',
+        variant: 'destructive',
       });
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onstart = () => {
-      setIsListening(true);
+    const windowWithSpeech = window as unknown as {
+      SpeechRecognition?: unknown;
+      webkitSpeechRecognition?: unknown;
     };
+    const SpeechRecognition = windowWithSpeech.SpeechRecognition ?? windowWithSpeech.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      const recognition = new (SpeechRecognition as new () => {
+        continuous: boolean;
+        interimResults: boolean;
+        lang: string;
+        onstart: (() => void) | null;
+        onresult: ((event: SpeechRecognitionEvent) => void) | null;
+        onerror: (() => void) | null;
+        onend: (() => void) | null;
+        start: () => void;
+      })();
+      
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInputMessage(transcript);
-      setIsListening(false);
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-      toast({
-        title: "Voice Recognition Error",
-        description: "Failed to recognize speech. Please try again.",
-        variant: "destructive",
-      });
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.start();
+      recognition.onstart = () => setIsListening(true);
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        setInputMessage(transcript);
+        setIsListening(false);
+      };
+      recognition.onerror = () => {
+        setIsListening(false);
+        toast({
+          title: 'Recognition Error',
+          description: 'Failed to recognize speech. Please try again.',
+          variant: 'destructive',
+        });
+      };
+      recognition.onend = () => setIsListening(false);
+      recognition.start();
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -326,9 +373,9 @@ export default function AIAssistant() {
               <div className="space-y-3">
                 {upcomingEvents && Array.isArray(upcomingEvents) && upcomingEvents.length > 0 ? (
                   upcomingEvents
-                    .filter((event: any) => event.extractedData?.isRelevant && event.extractedData?.isClientRelated)
+                    .filter((event: UpcomingEvent) => event.extractedData?.isRelevant && event.extractedData?.isClientRelated)
                     .slice(0, 5)
-                    .map((event: any) => {
+                    .map((event: UpcomingEvent) => {
                       const startTime = new Date(event.startTime);
                       const isToday = startTime.toDateString() === new Date().toDateString();
                       const isSoon = startTime.getTime() - Date.now() < 2 * 60 * 60 * 1000; // Within 2 hours
@@ -356,10 +403,10 @@ export default function AIAssistant() {
                                 {event.extractedData.sessionType}
                               </p>
                             )}
-                            {event.extractedData?.clientEmails?.length > 0 && (
+{(event.extractedData?.clientEmails?.length ?? 0) > 0 && (
                               <p className="text-xs text-muted-foreground">
-                                With: {event.extractedData.clientEmails.slice(0, 2).join(', ')}
-                                {event.extractedData.clientEmails.length > 2 && ` +${event.extractedData.clientEmails.length - 2} more`}
+                                With: {event.extractedData?.clientEmails?.slice(0, 2).join(', ')}
+                                {(event.extractedData?.clientEmails?.length ?? 0) > 2 && ` +${(event.extractedData?.clientEmails?.length ?? 0) - 2} more`}
                               </p>
                             )}
                           </div>

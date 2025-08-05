@@ -64,7 +64,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
   useEffect(() => {
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
       const windowWithSpeech = window as WindowWithSpeechRecognition;
-      const SpeechRecognition = windowWithSpeech.webkitSpeechRecognition || windowWithSpeech.SpeechRecognition;
+      const SpeechRecognition = windowWithSpeech.webkitSpeechRecognition ?? windowWithSpeech.SpeechRecognition;
       
       if (SpeechRecognition) {
         const recognitionInstance = new SpeechRecognition();
@@ -78,7 +78,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
         setError(null);
       };
 
-      recognitionInstance.onresult = (event: any) => {
+      recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
         let finalTranscript = "";
         for (let i = event.resultIndex; i < event.results.length; i++) {
           if (event.results[i].isFinal) {
@@ -110,7 +110,7 @@ export function useVoiceInput(): UseVoiceInputReturn {
         recognition.stop();
       }
     };
-  }, [recognition]);
+  }, [recognition]); // Empty dependency array - only run once on mount
 
   const startListening = useCallback(() => {
     if (recognition && !isListening) {

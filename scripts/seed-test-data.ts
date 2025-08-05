@@ -1,326 +1,419 @@
 #!/usr/bin/env tsx
 
 import dotenv from 'dotenv';
-import { db } from '../server/db.js';
-import * as schema from '../shared/schema.js';
-import { eq } from 'drizzle-orm';
-
 dotenv.config();
 
-// Test user info - replace with your actual Google account
-const TEST_USER_EMAIL = 'peterjamesblizzard@gmail.com';
-const TEST_USER_GOOGLE_ID = 'test-google-id-123';
+import { db } from '../server/db.js';
+import { users, contacts, calendarEvents, interactions, goals } from '../shared/schema.js';
+import { eq } from 'drizzle-orm';
 
-// Sample wellness client data
-const SAMPLE_CLIENTS = [
+// Realistic wellness practitioner test data
+const testUser = {
+  googleId: 'test-google-id-12345',
+  email: 'wellness.coach@example.com',
+  name: 'Sarah Johnson',
+  picture: 'https://example.com/avatar.jpg',
+  accessToken: 'test-access-token',
+  refreshToken: 'test-refresh-token',
+};
+
+const testContacts = [
   {
-    name: 'Sarah Johnson',
-    email: 'sarah.johnson@example.com',
-    phone: '+1-555-0101',
+    name: 'Emily Chen',
+    email: 'emily.chen@email.com',
+    phone: '+1-555-0123',
     lifecycleStage: 'core_client' as const,
-    notes: 'Long-term client focused on stress management and work-life balance. Responds well to mindfulness techniques.',
+    status: 'active',
+    notes: 'Regular yoga sessions, working on stress management',
   },
   {
-    name: 'Michael Chen',
-    email: 'michael.chen@example.com', 
-    phone: '+1-555-0102',
+    name: 'Michael Rodriguez',
+    email: 'mike.rodriguez@email.com',
+    phone: '+1-555-0124',
     lifecycleStage: 'new_client' as const,
-    notes: 'Recently started wellness journey. Interested in nutrition and fitness coaching.',
+    status: 'active',
+    notes: 'New client, interested in mindfulness coaching',
   },
   {
-    name: 'Emily Rodriguez',
-    email: 'emily.rodriguez@example.com',
-    phone: '+1-555-0103', 
-    lifecycleStage: 'curious' as const,
-    notes: 'Exploring wellness options. Had initial consultation, considering package options.',
-  },
-  {
-    name: 'David Thompson',
-    email: 'david.thompson@example.com',
-    phone: '+1-555-0104',
+    name: 'Jessica Williams',
+    email: 'jessica.williams@email.com',
+    phone: '+1-555-0125',
     lifecycleStage: 'needs_reconnecting' as const,
-    notes: 'Former regular client who has been inactive for 3 months. Last session was focused on anxiety management.',
+    status: 'active',
+    notes: 'Missed last few sessions, may need follow-up',
   },
   {
-    name: 'Lisa Wang',
-    email: 'lisa.wang@example.com',
-    phone: '+1-555-0105',
+    name: 'David Kim',
+    email: 'david.kim@email.com',
+    phone: '+1-555-0126',
+    lifecycleStage: 'curious' as const,
+    status: 'active',
+    notes: 'Interested in meditation programs',
+  },
+  {
+    name: 'Amanda Foster',
+    email: 'amanda.foster@email.com',
+    phone: '+1-555-0127',
     lifecycleStage: 'ambassador' as const,
-    notes: 'Excellent progress with meditation practice. Has referred 3 new clients. Very engaged and positive.',
+    status: 'active',
+    notes: 'Long-term client, refers others regularly',
   },
 ];
 
-// Sample calendar events that would come from Google Calendar sync
-const SAMPLE_CALENDAR_EVENTS = [
+// Realistic calendar events that would come from Google Calendar sync
+const getCalendarEvents = (userId: string, contactIds: string[]) => [
   {
-    googleEventId: 'wellness-session-001',
-    summary: 'Wellness Coaching Session - Sarah Johnson',
-    description: 'Weekly check-in session focusing on stress management techniques and mindfulness practice. Sarah mentioned feeling overwhelmed at work this week.',
-    startTime: new Date('2024-01-15T10:00:00Z'),
-    endTime: new Date('2024-01-15T11:00:00Z'),
-    attendees: [{ email: 'sarah.johnson@example.com', name: 'Sarah Johnson' }],
-    location: 'Wellness Studio - Room 1',
+    userId,
+    googleEventId: 'event_001_' + Date.now(),
+    summary: '1:1 Wellness Session - Emily Chen',
+    description:
+      'Weekly wellness session focusing on stress reduction techniques and mindfulness practices. Emily mentioned feeling overwhelmed at work this week.',
+    startTime: new Date('2025-01-28T10:00:00Z'),
+    endTime: new Date('2025-01-28T11:00:00Z'),
+    location: 'Wellness Center - Room 2',
     meetingType: 'in-person',
+    attendees: [{ email: 'emily.chen@email.com', name: 'Emily Chen' }],
+    calendarId: 'primary',
+    calendarName: 'Business',
+    calendarColor: '#3174ad',
+    processed: false,
+    rawData: {
+      kind: 'calendar#event',
+      etag: '"test_etag_001"',
+      id: 'event_001_' + Date.now(),
+      status: 'confirmed',
+      created: '2025-01-20T12:00:00.000Z',
+      updated: '2025-01-20T12:00:00.000Z',
+      summary: '1:1 Wellness Session - Emily Chen',
+      description:
+        'Weekly wellness session focusing on stress reduction techniques and mindfulness practices. Emily mentioned feeling overwhelmed at work this week.',
+      location: 'Wellness Center - Room 2',
+      creator: { email: 'wellness.coach@example.com' },
+      organizer: { email: 'wellness.coach@example.com' },
+      start: { dateTime: '2025-01-28T10:00:00Z', timeZone: 'America/New_York' },
+      end: { dateTime: '2025-01-28T11:00:00Z', timeZone: 'America/New_York' },
+      attendees: [
+        { email: 'wellness.coach@example.com', responseStatus: 'accepted' },
+        { email: 'emily.chen@email.com', responseStatus: 'accepted' },
+      ],
+    },
   },
   {
-    googleEventId: 'consultation-002', 
-    summary: 'Initial Consultation - Michael Chen',
-    description: 'First meeting with potential new client. Interested in nutrition coaching and fitness guidance. Discussed goals and created preliminary wellness plan.',
-    startTime: new Date('2024-01-16T14:00:00Z'),
-    endTime: new Date('2024-01-16T15:30:00Z'),
-    attendees: [{ email: 'michael.chen@example.com', name: 'Michael Chen' }],
+    userId,
+    googleEventId: 'event_002_' + Date.now(),
+    summary: 'Initial Consultation - Michael Rodriguez',
+    description:
+      'First consultation with new client Michael. Discussed goals: reducing anxiety, improving sleep quality, building healthy morning routine.',
+    startTime: new Date('2025-01-29T14:00:00Z'),
+    endTime: new Date('2025-01-29T15:30:00Z'),
     location: 'Virtual - Zoom',
     meetingType: 'video',
+    attendees: [{ email: 'mike.rodriguez@email.com', name: 'Michael Rodriguez' }],
+    calendarId: 'primary',
+    calendarName: 'Business',
+    calendarColor: '#3174ad',
+    processed: false,
+    rawData: {
+      kind: 'calendar#event',
+      etag: '"test_etag_002"',
+      id: 'event_002_' + Date.now(),
+      status: 'confirmed',
+      created: '2025-01-22T09:00:00.000Z',
+      updated: '2025-01-22T09:00:00.000Z',
+      summary: 'Initial Consultation - Michael Rodriguez',
+      description:
+        'First consultation with new client Michael. Discussed goals: reducing anxiety, improving sleep quality, building healthy morning routine.',
+      location: 'Virtual - Zoom',
+      creator: { email: 'wellness.coach@example.com' },
+      organizer: { email: 'wellness.coach@example.com' },
+      start: { dateTime: '2025-01-29T14:00:00Z', timeZone: 'America/New_York' },
+      end: { dateTime: '2025-01-29T15:30:00Z', timeZone: 'America/New_York' },
+      attendees: [
+        { email: 'wellness.coach@example.com', responseStatus: 'accepted' },
+        { email: 'mike.rodriguez@email.com', responseStatus: 'accepted' },
+      ],
+    },
   },
   {
-    googleEventId: 'follow-up-003',
-    summary: 'Follow-up Session - Emily Rodriguez',
-    description: 'Second consultation to discuss wellness package options. Emily expressed interest in the 3-month mindfulness program.',
-    startTime: new Date('2024-01-17T09:00:00Z'),
-    endTime: new Date('2024-01-17T10:00:00Z'),
-    attendees: [{ email: 'emily.rodriguez@example.com', name: 'Emily Rodriguez' }],
-    location: 'Phone Call',
+    userId,
+    googleEventId: 'event_003_' + Date.now(),
+    summary: 'Follow-up Call - Jessica Williams',
+    description:
+      'Check-in call with Jessica who has missed recent sessions. Want to understand any challenges and see how to better support her wellness journey.',
+    startTime: new Date('2025-01-30T16:00:00Z'),
+    endTime: new Date('2025-01-30T16:30:00Z'),
+    location: 'Phone call',
     meetingType: 'phone',
+    attendees: [{ email: 'jessica.williams@email.com', name: 'Jessica Williams' }],
+    calendarId: 'primary',
+    calendarName: 'Business',
+    calendarColor: '#3174ad',
+    processed: false,
+    rawData: {
+      kind: 'calendar#event',
+      etag: '"test_etag_003"',
+      id: 'event_003_' + Date.now(),
+      status: 'confirmed',
+      created: '2025-01-25T11:00:00.000Z',
+      updated: '2025-01-25T11:00:00.000Z',
+      summary: 'Follow-up Call - Jessica Williams',
+      description:
+        'Check-in call with Jessica who has missed recent sessions. Want to understand any challenges and see how to better support her wellness journey.',
+    },
   },
   {
-    googleEventId: 'group-session-004',
-    summary: 'Group Meditation Workshop',
-    description: 'Monthly group meditation session. Focus on breathing techniques and stress relief. Great energy from the group today!',
-    startTime: new Date('2024-01-18T18:00:00Z'),
-    endTime: new Date('2024-01-18T19:30:00Z'),
+    userId,
+    googleEventId: 'event_004_' + Date.now(),
+    summary: 'Group Meditation Session',
+    description:
+      'Weekly group meditation session. Focus on breath work and body awareness. Expecting 8-10 participants.',
+    startTime: new Date('2025-01-31T18:00:00Z'),
+    endTime: new Date('2025-01-31T19:00:00Z'),
+    location: 'Wellness Center - Main Hall',
+    meetingType: 'in-person',
     attendees: [
-      { email: 'sarah.johnson@example.com', name: 'Sarah Johnson' },
-      { email: 'lisa.wang@example.com', name: 'Lisa Wang' },
-      { email: 'group.participant1@example.com', name: 'Alex Smith' },
-      { email: 'group.participant2@example.com', name: 'Maya Patel' },
+      { email: 'emily.chen@email.com', name: 'Emily Chen' },
+      { email: 'david.kim@email.com', name: 'David Kim' },
+      { email: 'amanda.foster@email.com', name: 'Amanda Foster' },
     ],
-    location: 'Wellness Studio - Main Room',
-    meetingType: 'in-person',
+    calendarId: 'primary',
+    calendarName: 'Business',
+    calendarColor: '#3174ad',
+    processed: false,
+    rawData: {
+      kind: 'calendar#event',
+      etag: '"test_etag_004"',
+      id: 'event_004_' + Date.now(),
+      status: 'confirmed',
+      created: '2025-01-15T10:00:00.000Z',
+      updated: '2025-01-15T10:00:00.000Z',
+      summary: 'Group Meditation Session',
+      description:
+        'Weekly group meditation session. Focus on breath work and body awareness. Expecting 8-10 participants.',
+      location: 'Wellness Center - Main Hall',
+      recurrence: ['RRULE:FREQ=WEEKLY;BYDAY=FR'],
+    },
   },
   {
-    googleEventId: 'crisis-session-005',
-    summary: 'Urgent Check-in - David Thompson',
-    description: 'Emergency session requested by David. Experiencing high anxiety levels and panic attacks. Focused on immediate coping strategies and breathing exercises.',
-    startTime: new Date('2024-01-19T16:00:00Z'),
-    endTime: new Date('2024-01-19T17:00:00Z'),
-    attendees: [{ email: 'david.thompson@example.com', name: 'David Thompson' }],
-    location: 'Virtual - Emergency Session',
-    meetingType: 'video',
-  },
-  {
-    googleEventId: 'celebration-006',
-    summary: 'Progress Celebration - Lisa Wang',
-    description: 'Celebrating Lisa\'s 6-month meditation milestone! She\'s made incredible progress and wants to discuss becoming a wellness ambassador.',
-    startTime: new Date('2024-01-20T11:00:00Z'),
-    endTime: new Date('2024-01-20T12:00:00Z'),
-    attendees: [{ email: 'lisa.wang@example.com', name: 'Lisa Wang' }],
-    location: 'Wellness Studio - Room 2', 
-    meetingType: 'in-person',
-  },
-  {
-    googleEventId: 'admin-007',
-    summary: 'Admin Time - Client Notes Review',
-    description: 'Weekly admin block for updating client files, reviewing progress notes, and planning upcoming sessions.',
-    startTime: new Date('2024-01-21T13:00:00Z'),
-    endTime: new Date('2024-01-21T14:00:00Z'),
-    attendees: [],
+    userId,
+    googleEventId: 'event_005_' + Date.now(),
+    summary: 'Administrative Time - Client Notes',
+    description:
+      'Time blocked for updating client notes, treatment plans, and preparing for upcoming sessions.',
+    startTime: new Date('2025-02-01T09:00:00Z'),
+    endTime: new Date('2025-02-01T10:00:00Z'),
     location: 'Home Office',
-    meetingType: 'in-person',
-  },
-  {
-    googleEventId: 'personal-008',
-    summary: 'Personal Appointment - Dentist',
-    description: 'Regular dental checkup and cleaning.',
-    startTime: new Date('2024-01-22T15:00:00Z'),
-    endTime: new Date('2024-01-22T16:00:00Z'),
+    meetingType: 'other',
     attendees: [],
-    location: 'Dr. Smith Dental Office',
+    calendarId: 'primary',
+    calendarName: 'Business',
+    calendarColor: '#3174ad',
+    processed: false,
+    rawData: {
+      kind: 'calendar#event',
+      etag: '"test_etag_005"',
+      id: 'event_005_' + Date.now(),
+      status: 'confirmed',
+      created: '2025-01-28T08:00:00.000Z',
+      updated: '2025-01-28T08:00:00.000Z',
+      summary: 'Administrative Time - Client Notes',
+    },
+  },
+  {
+    userId,
+    googleEventId: 'event_006_' + Date.now(),
+    summary: 'Personal: Yoga Class',
+    description:
+      'My own yoga practice at the local studio. Important for maintaining my own wellness.',
+    startTime: new Date('2025-02-01T07:00:00Z'),
+    endTime: new Date('2025-02-01T08:00:00Z'),
+    location: 'Downtown Yoga Studio',
     meetingType: 'in-person',
+    attendees: [],
+    calendarId: 'personal',
+    calendarName: 'Personal',
+    calendarColor: '#42d692',
+    processed: false,
+    rawData: {
+      kind: 'calendar#event',
+      etag: '"test_etag_006"',
+      id: 'event_006_' + Date.now(),
+      status: 'confirmed',
+      created: '2025-01-20T20:00:00.000Z',
+      updated: '2025-01-20T20:00:00.000Z',
+      summary: 'Personal: Yoga Class',
+    },
   },
 ];
 
-// Sample interactions (emails/communications)
-const SAMPLE_INTERACTIONS = [
+// Sample email interactions that would come from Gmail sync
+const getEmailInteractions = (contactIds: { [email: string]: string }) => [
   {
+    contactId: contactIds['emily.chen@email.com'],
     type: 'email',
-    subject: 'Thank you for today\'s session!',
-    content: 'Hi! I wanted to reach out and thank you for the session today. The breathing techniques you taught me really helped when I had that stressful meeting this afternoon. I\'m already feeling more centered. Looking forward to our next session!',
-    timestamp: new Date('2024-01-15T12:30:00Z'),
+    subject: "Re: This week's session",
+    content:
+      "Hi Sarah, Thank you for today's session. The breathing techniques you showed me really helped when I had that stressful meeting yesterday. I've been practicing them daily. Looking forward to our session next week! Best, Emily",
+    timestamp: new Date('2025-01-28T15:30:00Z'),
     source: 'gmail',
-    sourceId: 'gmail-msg-001',
-    clientEmail: 'sarah.johnson@example.com',
+    sourceId: 'gmail_msg_001_' + Date.now(),
+    sentiment: 4,
   },
   {
+    contactId: contactIds['mike.rodriguez@email.com'],
     type: 'email',
-    subject: 'Question about nutrition plan',
-    content: 'Hey there! I\'ve been following the nutrition guidelines you gave me, but I\'m wondering if I can substitute quinoa for brown rice? Also, I\'ve been having more energy in the mornings - is that normal? Thanks!',
-    timestamp: new Date('2024-01-16T19:00:00Z'),
+    subject: 'Questions before our consultation',
+    content:
+      "Hi Sarah, I'm excited about our consultation tomorrow. I wanted to ask - should I prepare anything specific? Also, I've been having trouble sleeping lately (2-3 hours per night) and my anxiety levels are quite high. I'm hoping we can work on this together. Thanks, Michael",
+    timestamp: new Date('2025-01-28T20:00:00Z'),
     source: 'gmail',
-    sourceId: 'gmail-msg-002',
-    clientEmail: 'michael.chen@example.com',
+    sourceId: 'gmail_msg_002_' + Date.now(),
+    sentiment: 2,
   },
   {
+    contactId: contactIds['jessica.williams@email.com'],
     type: 'email',
-    subject: 'Concerned about my progress',
-    content: 'I\'ve been thinking a lot since our last conversation. I\'m still not sure if I\'m ready to commit to the full program. Can we schedule another call to discuss? I want to make sure this is the right time for me.',
-    timestamp: new Date('2024-01-17T21:00:00Z'),
+    subject: 'Sorry I missed our session',
+    content:
+      "Sarah, I'm really sorry I had to cancel our last two sessions. Work has been absolutely crazy and I've been traveling a lot. I know consistency is important for my wellness journey but I'm struggling to balance everything. Can we talk about this in our call tomorrow? I don't want to give up on this. Jessica",
+    timestamp: new Date('2025-01-29T22:00:00Z'),
     source: 'gmail',
-    sourceId: 'gmail-msg-003',
-    clientEmail: 'emily.rodriguez@example.com',
+    sourceId: 'gmail_msg_003_' + Date.now(),
+    sentiment: 2,
   },
   {
+    contactId: contactIds['david.kim@email.com'],
     type: 'email',
-    subject: 'Really struggling lately',
-    content: 'I know it\'s been a while since we\'ve talked, but I\'m going through a really tough time right now. Work is overwhelming and I\'m having trouble sleeping again. The anxiety is back and worse than before. Can we set up a session soon?',
-    timestamp: new Date('2024-01-18T22:45:00Z'),
+    subject: 'Meditation program inquiry',
+    content:
+      "Hello Sarah, I attended your group meditation session last Friday and found it incredibly peaceful. I'm interested in learning more about your individual meditation coaching programs. Could we schedule a time to discuss? I'm particularly interested in techniques for focus and productivity. Thanks, David",
+    timestamp: new Date('2025-01-26T10:00:00Z'),
     source: 'gmail',
-    sourceId: 'gmail-msg-004',
-    clientEmail: 'david.thompson@example.com',
+    sourceId: 'gmail_msg_004_' + Date.now(),
+    sentiment: 4,
   },
   {
+    contactId: contactIds['amanda.foster@email.com'],
     type: 'email',
-    subject: 'Amazing breakthrough!',
-    content: 'I had to share this with you immediately! I used the meditation technique you taught me during a really difficult conversation with my boss today, and I stayed completely calm and centered. I think I\'m finally \'getting it\'! This wellness journey has been life-changing. Thank you so much!',
-    timestamp: new Date('2024-01-19T14:20:00Z'),
+    subject: 'Thank you + referral',
+    content:
+      "Sarah, I can't thank you enough for the transformation I've experienced over the past year. My stress levels are at an all-time low and I feel more centered than ever. I've referred my colleague Lisa Martinez (lisa.martinez@company.com) to you - she's dealing with burnout and I think your approach would really help her. She'll be reaching out soon. Gratefully, Amanda",
+    timestamp: new Date('2025-01-27T14:20:00Z'),
     source: 'gmail',
-    sourceId: 'gmail-msg-005',
-    clientEmail: 'lisa.wang@example.com',
+    sourceId: 'gmail_msg_005_' + Date.now(),
+    sentiment: 5,
   },
 ];
 
-async function seedTestData(): Promise<void> {
+// Sample wellness goals
+const getGoals = (contactIds: { [email: string]: string }) => [
+  {
+    contactId: contactIds['emily.chen@email.com'],
+    title: 'Daily Meditation Practice',
+    description: 'Establish consistent daily meditation practice of at least 10 minutes',
+    targetValue: 30,
+    currentValue: 18,
+    unit: 'days',
+    status: 'active',
+    deadline: new Date('2025-03-01T00:00:00Z'),
+  },
+  {
+    contactId: contactIds['mike.rodriguez@email.com'],
+    title: 'Improve Sleep Quality',
+    description: 'Achieve 7-8 hours of quality sleep per night using relaxation techniques',
+    targetValue: 8,
+    currentValue: 4,
+    unit: 'hours',
+    status: 'active',
+    deadline: new Date('2025-04-01T00:00:00Z'),
+  },
+  {
+    contactId: contactIds['jessica.williams@email.com'],
+    title: 'Weekly Session Attendance',
+    description: 'Attend weekly wellness sessions consistently',
+    targetValue: 4,
+    currentValue: 1,
+    unit: 'sessions',
+    status: 'active',
+    deadline: new Date('2025-02-28T00:00:00Z'),
+  },
+];
+
+export async function seedTestData() {
+  console.log('🌱 Starting seed data insertion...');
+
   try {
-    console.log('🌱 Starting test data seeding...');
+    // Clean up existing test data
+    console.log('🧹 Cleaning up existing test data...');
+    await db.delete(interactions).where(eq(interactions.source, 'gmail'));
+    await db.delete(calendarEvents).where(eq(calendarEvents.googleEventId, 'test'));
+    await db.delete(goals);
+    await db.delete(contacts).where(eq(contacts.email, 'emily.chen@email.com'));
+    await db.delete(users).where(eq(users.email, testUser.email));
 
-    // 1. Create or get test user
+    // Insert test user
     console.log('👤 Creating test user...');
-    let user = await db.query.users.findFirst({
-      where: eq(schema.users.email, TEST_USER_EMAIL),
+    const [user] = await db.insert(users).values(testUser).returning();
+
+    // Insert test contacts
+    console.log('👥 Creating test contacts...');
+    const insertedContacts = await db
+      .insert(contacts)
+      .values(testContacts.map((contact) => ({ ...contact, userId: user.id })))
+      .returning();
+
+    // Create contact email to ID mapping
+    const contactEmailToId: { [email: string]: string } = {};
+    insertedContacts.forEach((contact) => {
+      contactEmailToId[contact.email] = contact.id;
     });
 
-    if (!user) {
-      const [newUser] = await db
-        .insert(schema.users)
-        .values({
-          googleId: TEST_USER_GOOGLE_ID,
-          email: TEST_USER_EMAIL,
-          name: 'Test Wellness Practitioner',
-          picture: 'https://via.placeholder.com/150',
-          accessToken: 'test-access-token',
-          refreshToken: 'test-refresh-token',
-        })
-        .returning();
-      user = newUser;
-    }
-
-    console.log(`✅ User ready: ${user.email}`);
-
-    // 2. Create sample contacts
-    console.log('👥 Creating sample contacts...');
-    const contacts = [];
-    for (const clientData of SAMPLE_CLIENTS) {
-      // Check if contact already exists
-      const existingContact = await db.query.contacts.findFirst({
-        where: eq(schema.contacts.email, clientData.email),
-      });
-
-      if (!existingContact) {
-        const [newContact] = await db
-          .insert(schema.contacts)
-          .values({
-            userId: user.id,
-            name: clientData.name,
-            email: clientData.email,
-            phone: clientData.phone,
-            lifecycleStage: clientData.lifecycleStage,
-            notes: clientData.notes,
-            status: 'active',
-            sentiment: Math.floor(Math.random() * 3) + 3, // 3-5 rating
-            lastContact: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000), // Within last week
-          })
-          .returning();
-        contacts.push(newContact);
-      } else {
-        contacts.push(existingContact);
-      }
-    }
-
-    console.log(`✅ Created ${contacts.length} contacts`);
-
-    // 3. Create calendar events (simulating Google Calendar sync)
+    // Insert calendar events
     console.log('📅 Creating calendar events...');
-    for (const eventData of SAMPLE_CALENDAR_EVENTS) {
-      // Check if event already exists
-      const existingEvent = await db.query.calendarEvents.findFirst({
-        where: eq(schema.calendarEvents.googleEventId, eventData.googleEventId),
-      });
+    const calendarEventData = getCalendarEvents(
+      user.id,
+      insertedContacts.map((c) => c.id)
+    );
+    await db.insert(calendarEvents).values(calendarEventData);
 
-      if (!existingEvent) {
-        await db.insert(schema.calendarEvents).values({
-          userId: user.id,
-          googleEventId: eventData.googleEventId,
-          rawData: eventData,
-          summary: eventData.summary,
-          description: eventData.description,
-          startTime: eventData.startTime,
-          endTime: eventData.endTime,
-          attendees: eventData.attendees,
-          location: eventData.location,
-          meetingType: eventData.meetingType,
-          processed: false, // This will trigger LLM processing
-          calendarId: 'primary',
-          calendarName: 'Primary Calendar',
-        });
-      }
-    }
+    // Insert email interactions
+    console.log('📧 Creating email interactions...');
+    const emailInteractionData = getEmailInteractions(contactEmailToId);
+    await db.insert(interactions).values(emailInteractionData);
 
-    console.log(`✅ Created ${SAMPLE_CALENDAR_EVENTS.length} calendar events`);
+    // Insert goals
+    console.log('🎯 Creating wellness goals...');
+    const goalData = getGoals(contactEmailToId);
+    await db.insert(goals).values(goalData);
 
-    // 4. Create sample interactions
-    console.log('💬 Creating sample interactions...');
-    for (const interactionData of SAMPLE_INTERACTIONS) {
-      // Find the contact for this interaction
-      const contact = contacts.find(c => c.email === interactionData.clientEmail);
-      if (contact) {
-        // Check if interaction already exists
-        const existingInteraction = await db.query.interactions.findFirst({
-          where: eq(schema.interactions.sourceId, interactionData.sourceId),
-        });
+    console.log('✅ Seed data insertion completed successfully!');
+    console.log(`📊 Created:`);
+    console.log(`   • 1 test user (${user.email})`);
+    console.log(`   • ${insertedContacts.length} contacts`);
+    console.log(`   • ${calendarEventData.length} calendar events`);
+    console.log(`   • ${emailInteractionData.length} email interactions`);
+    console.log(`   • ${goalData.length} wellness goals`);
 
-        if (!existingInteraction) {
-          await db.insert(schema.interactions).values({
-            contactId: contact.id,
-            type: interactionData.type,
-            subject: interactionData.subject,
-            content: interactionData.content,
-            timestamp: interactionData.timestamp,
-            source: interactionData.source,
-            sourceId: interactionData.sourceId,
-            sentiment: Math.floor(Math.random() * 5) + 1, // 1-5 rating
-          });
-        }
-      }
-    }
-
-    console.log(`✅ Created ${SAMPLE_INTERACTIONS.length} interactions`);
-
-    console.log('🎉 Test data seeding completed successfully!');
-    console.log('\n📋 Summary:');
-    console.log(`   • User: ${user.email}`);
-    console.log(`   • Contacts: ${contacts.length}`);
-    console.log(`   • Calendar Events: ${SAMPLE_CALENDAR_EVENTS.length}`);
-    console.log(`   • Interactions: ${SAMPLE_INTERACTIONS.length}`);
-    console.log('\n🤖 Ready to test LLM processing!');
-    console.log('   Run the server and trigger calendar event processing to see OpenRouter/Gemini in action.');
-
+    return {
+      user,
+      contacts: insertedContacts,
+      success: true,
+    };
   } catch (error) {
-    console.error('❌ Seeding failed:', error);
-    process.exit(1);
+    console.error('❌ Error seeding test data:', error);
+    throw error;
   }
 }
 
-// Run the seeding
-seedTestData().then(() => {
-  console.log('\n✨ Seeding complete - you can now test your LLM integration!');
-  process.exit(0);
-});
+// Allow running as script
+if (import.meta.url === `file://${process.argv[1]}`) {
+  seedTestData()
+    .then(() => {
+      console.log('✨ Test data seeding complete!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Seeding failed:', error);
+      process.exit(1);
+    });
+}

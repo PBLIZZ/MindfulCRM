@@ -1,5 +1,6 @@
 import React from 'react';
 import { updateUserConsent } from '../api/photoEnrichmentApi.js';
+import { useToast } from '../hooks/use-toast.js';
 
 interface UserProfile {
   id: string;
@@ -15,6 +16,8 @@ interface ConsentVerificationProps {
 }
 
 const ConsentVerification: React.FC<ConsentVerificationProps> = ({ profile }) => {
+  const { toast } = useToast();
+  
   if (!profile) {
     return (
       <div className="p-3 border rounded bg-gray-50">
@@ -29,9 +32,12 @@ const ConsentVerification: React.FC<ConsentVerificationProps> = ({ profile }) =>
     try {
       await updateUserConsent(true);
       window.location.reload(); // Refresh to update UI
-    } catch (error) {
-      console.error('Failed to grant consent:', error);
-      alert('Failed to grant consent. Please try again.');
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to grant consent. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 

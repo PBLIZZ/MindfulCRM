@@ -269,7 +269,7 @@ export default function Tasks() {
           <TabsTrigger value='suggestions' className='flex items-center gap-2'>
             <Lightbulb className='h-4 w-4' />
             AI Suggestions (
-            {(aiSuggestions || []).filter((s: AiSuggestion) => s.status === 'pending').length})
+            {(aiSuggestions ?? []).filter((s: AiSuggestion) => s.status === 'pending').length})
           </TabsTrigger>
           <TabsTrigger value='projects' className='flex items-center gap-2'>
             <Target className='h-4 w-4' />
@@ -381,7 +381,7 @@ function TasksTab({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value='all'>All Projects</SelectItem>
-            {(projects || []).map((project: Project) => (
+            {(projects ?? []).map((project: Project) => (
               <SelectItem key={project.id} value={project.id}>
                 {project.name}
               </SelectItem>
@@ -524,7 +524,7 @@ function SuggestionsTab({ suggestions }: { suggestions: AiSuggestion[] }) {
     },
   });
 
-  const pendingSuggestions = (suggestions || []).filter((s) => s.status === 'pending');
+  const pendingSuggestions = (suggestions ?? []).filter((s) => s.status === 'pending');
 
   return (
     <div className='space-y-4'>
@@ -595,7 +595,7 @@ function SuggestionsTab({ suggestions }: { suggestions: AiSuggestion[] }) {
 function ProjectsTab({ projects }: { projects: Project[] }) {
   return (
     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
-      {(projects || []).map((project: Project) => (
+      {(projects ?? []).map((project: Project) => (
         <Card key={project.id}>
           <CardHeader>
             <div className='flex items-center gap-2'>
@@ -712,7 +712,7 @@ function CreateTaskDialog({ projects, onClose }: { projects: Project[]; onClose:
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value=''>No project</SelectItem>
-                {(projects || []).map((project: Project) => (
+                {(projects ?? []).map((project: Project) => (
                   <SelectItem key={project.id} value={project.id}>
                     {project.name}
                   </SelectItem>

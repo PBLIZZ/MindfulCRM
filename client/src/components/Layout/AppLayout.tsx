@@ -61,6 +61,12 @@ const quickActions = [
   { name: 'AI Chat', href: '/assistant', icon: Bot },
 ];
 
+interface SyncStatus {
+  lastSync: string;
+  status: 'success' | 'error' | 'pending';
+  service?: string;
+}
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
@@ -70,7 +76,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { theme, setTheme } = useTheme();
   const [location, setLocation] = useLocation();
 
-  const { data: syncStatus } = useQuery({
+  const { data: syncStatus } = useQuery<SyncStatus[]>({
     queryKey: ['/api/sync/status'],
     refetchInterval: 60000, // Refetch every minute
   });
@@ -97,7 +103,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     if (!syncStatus || !Array.isArray(syncStatus) || syncStatus.length === 0)
       return 'Last synced: Never';
 
-    const latestSync = syncStatus.reduce((latest: any, current: any) => {
+    const latestSync = syncStatus.reduce((latest: SyncStatus, current: SyncStatus) => {
       return new Date(current.lastSync) > new Date(latest.lastSync) ? current : latest;
     });
 
@@ -118,7 +124,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const getSyncStatusColor = () => {
     if (!syncStatus || !Array.isArray(syncStatus) || syncStatus.length === 0) return 'bg-gray-500';
 
-    const hasError = syncStatus.some((s: any) => s.status === 'error');
+    const hasError = syncStatus.some((s: SyncStatus) => s.status === 'error');
     if (hasError) return 'bg-red-500';
 
     return 'bg-green-500';
@@ -160,7 +166,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <Sidebar variant='inset'>
         <SidebarHeader>
           <div className='flex items-center space-x-3 px-2 py-2'>
-            <div className='w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-sm'>WH</div>
+            <div className='w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-sm'>
+              WH
+            </div>
             <div className='group-data-[collapsible=icon]:hidden'>
               <h1 className='text-lg font-bold text-teal-700 dark:text-teal-300'>OmniCRM</h1>
               <p className='text-xs text-muted-foreground'>Data Intelligence</p>
@@ -245,7 +253,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <header className='flex h-16 shrink-0 items-center justify-between gap-2 px-4 border-b'>
           <div className='flex items-center gap-2'>
             <SidebarTrigger className='-ml-1' />
-            <div className='text-sm font-semibold'>Welcome back, {user?.name || 'User'}</div>
+            <div className='text-sm font-semibold'>Welcome back, {user?.name ?? 'User'}</div>
           </div>
 
           <div className='flex items-center gap-4'>
@@ -254,9 +262,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <DropdownMenuTrigger asChild>
                 <Button variant='ghost' className='flex items-center gap-2 h-8 px-2'>
                   <Avatar className='h-6 w-6'>
-                    <AvatarImage src={user?.picture || undefined} alt={user?.name || 'User'} />
+                    <AvatarImage src={user?.picture ?? undefined} alt={user?.name ?? 'User'} />
                     <AvatarFallback className='text-xs'>
-                      {getUserInitials(user?.name || 'User')}
+                      {getUserInitials(user?.name ?? 'User')}
                     </AvatarFallback>
                   </Avatar>
                   <ChevronDown className='h-3 w-3' />
@@ -265,9 +273,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
               <DropdownMenuContent align='end' className='w-56'>
                 <DropdownMenuLabel className='font-normal'>
                   <div className='flex flex-col space-y-1'>
-                    <p className='text-sm font-medium leading-none'>{user?.name || 'User'}</p>
+                    <p className='text-sm font-medium leading-none'>{user?.name ?? 'User'}</p>
                     <p className='text-xs leading-none text-muted-foreground'>
-                      {user?.email || 'user@example.com'}
+                      {user?.email ?? 'user@example.com'}
                     </p>
                   </div>
                 </DropdownMenuLabel>

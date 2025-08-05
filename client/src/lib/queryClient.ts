@@ -2,7 +2,7 @@ import { QueryClient, type QueryFunction, type QueryFunctionContext } from "@tan
 
 async function throwIfResNotOk(res: Response): Promise<void> {
   if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
+    const text = (await res.text()) ?? res.statusText;
     throw new Error(`${res.status}: ${text}`);
   }
 }

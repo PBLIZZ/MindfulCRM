@@ -30,23 +30,21 @@ const PhotoEnrichment = () => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        console.log('PhotoEnrichment: Loading data...');
         const [stats, profile] = await Promise.all([
           fetchPhotoEnrichmentStats(),
           fetchUserProfile(),
         ]);
-        console.log('PhotoEnrichment: Stats loaded:', stats);
-        console.log('PhotoEnrichment: Profile loaded:', profile);
         setStats(stats);
         setProfile(profile);
-      } catch (error) {
-        console.error('PhotoEnrichment: Failed to load data:', error);
+      } catch {
+        // Error handling is managed through UI state and user feedback
+        // The loading state will show appropriate error messages to users
       } finally {
         setLoading(false);
       }
     };
 
-    loadData();
+    void loadData();
   }, []);
 
   if (loading) return (

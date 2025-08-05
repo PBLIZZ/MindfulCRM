@@ -42,6 +42,24 @@ export interface EnrichmentResponse {
   photoUrl?: string; // undefined, not null
 }
 
+export interface PhotoSuggestion {
+  id: string;
+  url: string;
+  source: 'linkedin' | 'gravatar' | 'clearbit' | 'ai_generated' | 'facebook' | 'twitter' | 'instagram' | 'github';
+  confidence: number;
+  thumbnailUrl: string;
+  metadata?: {
+    size?: { width: number; height: number };
+    format?: string;
+    sourceUrl?: string;
+    description?: string;
+  };
+}
+
+export interface PhotoSuggestionsResponse {
+  suggestions: PhotoSuggestion[];
+}
+
 export const fetchPhotoEnrichmentStats = async (): Promise<PhotoEnrichmentStats> => {
   const response = await fetch(`${API_BASE_URL}/photo-enrichment/stats`, {
     credentials: 'include',

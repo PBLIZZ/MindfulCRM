@@ -1,5 +1,19 @@
 {
   "extends": "./tsconfig.json",
-  "include": ["server/**/*", "shared/**/*", "types/**/*"],
-  "exclude": ["node_modules", "dist", "client"]
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    // server code doesn't have JSX
+    "jsx": "preserve"
+  },
+  "include": [
+    "server",
+    "shared",
+    "types"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "client"
+  ]
 }
