@@ -3,7 +3,9 @@
   "compilerOptions": {
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    // server code doesn't have JSX
+    "allowImportingTsExtensions": false,
+    "noEmit": false,
+    "composite": true,
     "jsx": "preserve"
   },
   "include": [

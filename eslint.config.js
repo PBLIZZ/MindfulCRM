@@ -6,6 +6,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default [
+  // Global ignores
   {
     ignores: [
       'node_modules/**',
@@ -31,6 +32,7 @@ export default [
       'client/src/components/ui/**',
     ],
   },
+  // Main configuration for all files
   {
     files: ['**/*.{js,jsx,ts,tsx}'],
     languageOptions: {
@@ -41,7 +43,8 @@ export default [
         ecmaFeatures: {
           jsx: true,
         },
-        project: ['./tsconfig.json', './tsconfig.server.json'],
+        project: true,
+        tsconfigRootDir: import.meta.dirname,
       },
       globals: {
         React: 'readonly',
@@ -92,10 +95,10 @@ export default [
       '@typescript-eslint/no-unused-vars': [
         'error',
         {
-          'argsIgnorePattern': '^_',
-          'varsIgnorePattern': '^_',
-          'ignoreRestSiblings': true
-        }
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
       ],
       // Turn off no-unused-vars for interface/type definitions
       'no-unused-vars': 'off',
@@ -143,10 +146,19 @@ export default [
       },
     },
   },
+  // Server-side specific configuration
   {
-    // Server-side specific rules
     files: ['server/**/*.{js,ts}'],
     languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        // We are explicitly telling ESLint to use the SERVER's tsconfig
+        // for any file inside the server/ directory.
+        project: './tsconfig.server.json',
+        tsconfigRootDir: import.meta.dirname,
+        ecmaVersion: 2020,
+        sourceType: 'module',
+      },
       globals: {
         // Node.js globals
         process: 'readonly',
@@ -163,16 +175,44 @@ export default [
         clearImmediate: 'readonly',
       },
     },
+    plugins: {
+      '@typescript-eslint': tseslint,
+    },
     rules: {
       // Allow console in server code
       'no-console': 'off',
       // Server doesn't need React rules
       'react-refresh/only-export-components': 'off',
+      // TypeScript rules still apply
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+        },
+      ],
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unsafe-call': 'error',
+      '@typescript-eslint/no-unsafe-member-access': 'error',
+      '@typescript-eslint/no-unsafe-return': 'error',
+      '@typescript-eslint/prefer-nullish-coalescing': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
     },
   },
+  // Configuration files
   {
-    // Configuration files
     files: ['*.config.{js,ts}', '*.config.*.{js,ts}'],
+    languageOptions: {
+      parser: tsparser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: 'module',
+      },
+    },
     rules: {
       // Configuration files can be more lenient
       '@typescript-eslint/no-explicit-any': 'warn',

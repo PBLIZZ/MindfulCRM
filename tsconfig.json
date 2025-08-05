@@ -23,6 +23,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "composite": true,
     "jsx": "react-jsx",
     /* Linting */
     "strict": true,
