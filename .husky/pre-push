@@ -2,7 +2,7 @@ echo "🚀 Running pre-push checks..."
 
 # Run TypeScript type checking again
 echo "🔍 Final TypeScript check..."
-npm run check
+npm run type-check
 
 # Check for high-severity security vulnerabilities
 echo "🔒 Security audit..."

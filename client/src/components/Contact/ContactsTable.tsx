@@ -179,7 +179,7 @@ export function ContactsTable({
   onEditContact, 
   onDeleteContact,
   onBulkAction,
-  _onExportData,
+  // _onExportData,
   onAddContact,
   onAITool,
 }: ContactsTableProps) {
