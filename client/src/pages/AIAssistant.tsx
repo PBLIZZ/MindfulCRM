@@ -1,13 +1,13 @@
 import { useState, useRef, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.js";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { ScrollArea } from "@/components/ui/scroll-area.js";
+import { Badge } from "@/components/ui/badge.js";
+
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient.js";
+import { useToast } from "@/hooks/use-toast.js";
 import {
   Bot,
   Send,
@@ -20,6 +20,17 @@ import {
   Mail,
   FileText,
 } from "lucide-react";
+
+// Speech Recognition types
+type SpeechRecognitionEvent = Event & { 
+  results: {
+    [index: number]: {
+      [index: number]: {
+        transcript: string;
+      };
+    };
+  };
+};
 
 interface Message {
   id: string;
@@ -37,6 +48,28 @@ interface Insight {
   createdAt: string;
 }
 
+// Speech Recognition API types for window extensions
+
+
+
+// Calendar event types
+interface CalendarEventExtractedData {
+  isRelevant?: boolean;
+  isClientRelated?: boolean;
+  confidence?: number;
+  sessionType?: string;
+  clientEmails?: string[];
+}
+
+interface UpcomingEvent {
+  id: string;
+  summary: string;
+  startTime: string;
+  extractedData?: CalendarEventExtractedData;
+}
+
+
+
 export default function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -45,17 +78,35 @@ export default function AIAssistant() {
   const { toast } = useToast();
 
   // Fetch AI insights
-  const { data: insights } = useQuery({
+  const { data: insights } = useQuery<Insight[]>({
     queryKey: ["/api/ai/insights"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/ai/insights");
+      return response.json() as Promise<Insight[]>;
+    },
     refetchInterval: 300000, // Refetch every 5 minutes
   });
 
-  const chatMutation = useMutation({
-    mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", "/api/ai/chat", { message });
-      return response.json();
+  // Fetch upcoming calendar events with AI analysis
+  const { data: upcomingEvents } = useQuery<UpcomingEvent[]>({
+    queryKey: ["/api/calendar/upcoming"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/calendar/upcoming?limit=10");
+      return response.json() as Promise<UpcomingEvent[]>;
     },
-    onSuccess: (response) => {
+    refetchInterval: 600000, // Refetch every 10 minutes
+  });
+
+  interface ChatResponse {
+    message: string;
+  }
+
+  const chatMutation = useMutation({
+    mutationFn: async (message: string): Promise<ChatResponse> => {
+      const response = await apiRequest("POST", "/api/ai/chat", { message });
+      return response.json() as Promise<ChatResponse>;
+    },
+    onSuccess: (response: ChatResponse) => {
       const assistantMessage: Message = {
         id: Date.now().toString() + "_assistant",
         content: response.message,
@@ -64,7 +115,7 @@ export default function AIAssistant() {
       };
       setMessages((prev) => [...prev, assistantMessage]);
     },
-    onError: (error) => {
+    onError: () => {
       toast({
         title: "Error",
         description: "Failed to get AI response. Please try again.",
@@ -107,46 +158,54 @@ export default function AIAssistant() {
   };
 
   const startVoiceRecognition = () => {
-    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+    if (!('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
       toast({
-        title: "Voice Recognition Not Supported",
-        description: "Your browser doesn't support voice recognition.",
-        variant: "destructive",
+        title: 'Voice Recognition Not Supported',
+        description: 'Your browser does not support speech recognition.',
+        variant: 'destructive',
       });
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onstart = () => {
-      setIsListening(true);
+    const windowWithSpeech = window as unknown as {
+      SpeechRecognition?: unknown;
+      webkitSpeechRecognition?: unknown;
     };
+    const SpeechRecognition = windowWithSpeech.SpeechRecognition ?? windowWithSpeech.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      const recognition = new (SpeechRecognition as new () => {
+        continuous: boolean;
+        interimResults: boolean;
+        lang: string;
+        onstart: (() => void) | null;
+        onresult: ((event: SpeechRecognitionEvent) => void) | null;
+        onerror: (() => void) | null;
+        onend: (() => void) | null;
+        start: () => void;
+      })();
+      
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInputMessage(transcript);
-      setIsListening(false);
-    };
-
-    recognition.onerror = () => {
-      setIsListening(false);
-      toast({
-        title: "Voice Recognition Error",
-        description: "Failed to recognize speech. Please try again.",
-        variant: "destructive",
-      });
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.start();
+      recognition.onstart = () => setIsListening(true);
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        setInputMessage(transcript);
+        setIsListening(false);
+      };
+      recognition.onerror = () => {
+        setIsListening(false);
+        toast({
+          title: 'Recognition Error',
+          description: 'Failed to recognize speech. Please try again.',
+          variant: 'destructive',
+        });
+      };
+      recognition.onend = () => setIsListening(false);
+      recognition.start();
+    }
   };
 
   const getPriorityColor = (priority: string) => {
@@ -179,10 +238,11 @@ export default function AIAssistant() {
 
   const quickPrompts = [
     "Summarize my recent client interactions",
-    "What are my upcoming meetings today?",
+    "What are my upcoming client sessions?",
     "Generate a follow-up email template",
     "Analyze my client engagement trends",
     "Suggest next steps for my top clients",
+    "Review today's calendar for client sessions",
   ];
 
   return (
@@ -298,8 +358,84 @@ export default function AIAssistant() {
         </Card>
       </div>
 
-      {/* Insights Sidebar */}
-      <div className="w-full lg:w-80 lg:shrink-0 lg:max-h-full">
+      {/* Insights & Events Sidebar */}
+      <div className="w-full lg:w-80 lg:shrink-0 lg:max-h-full space-y-4">
+        {/* Upcoming Events */}
+        <Card className="lg:h-auto">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-teal-600" />
+              Upcoming Client Sessions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ScrollArea className="h-48 lg:h-60">
+              <div className="space-y-3">
+                {upcomingEvents && Array.isArray(upcomingEvents) && upcomingEvents.length > 0 ? (
+                  upcomingEvents
+                    .filter((event: UpcomingEvent) => event.extractedData?.isRelevant && event.extractedData?.isClientRelated)
+                    .slice(0, 5)
+                    .map((event: UpcomingEvent) => {
+                      const startTime = new Date(event.startTime);
+                      const isToday = startTime.toDateString() === new Date().toDateString();
+                      const isSoon = startTime.getTime() - Date.now() < 2 * 60 * 60 * 1000; // Within 2 hours
+                      
+                      return (
+                        <div key={event.id} className={`border rounded-lg p-3 ${
+                          isSoon ? 'border-orange-200 bg-orange-50 dark:bg-orange-950' : 
+                          isToday ? 'border-teal-200 bg-teal-50 dark:bg-teal-950' : ''
+                        }`}>
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-medium text-sm line-clamp-2">{event.summary}</h4>
+                            {event.extractedData?.confidence && (
+                              <Badge variant="secondary" className="text-xs">
+                                {Math.round(event.extractedData.confidence * 100)}%
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {startTime.toLocaleDateString()} at {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                            {event.extractedData?.sessionType && (
+                              <p className="text-xs text-teal-600 font-medium capitalize">
+                                {event.extractedData.sessionType}
+                              </p>
+                            )}
+{(event.extractedData?.clientEmails?.length ?? 0) > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                With: {event.extractedData?.clientEmails?.slice(0, 2).join(', ')}
+                                {(event.extractedData?.clientEmails?.length ?? 0) > 2 && ` +${(event.extractedData?.clientEmails?.length ?? 0) - 2} more`}
+                              </p>
+                            )}
+                          </div>
+                          {isSoon && (
+                            <div className="mt-2 text-xs text-orange-600 font-medium flex items-center gap-1">
+                              <Users className="h-3 w-3" />
+                              Starting soon
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                ) : (
+                  <div className="text-center py-8">
+                    <Calendar className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      No upcoming client sessions found
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Events are filtered using AI to show only relevant client sessions
+                    </p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* AI Insights */}
         <Card className="lg:h-auto">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -308,7 +444,7 @@ export default function AIAssistant() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-48 lg:h-80">
+            <ScrollArea className="h-48 lg:h-60">
               <div className="space-y-4">
                 {insights && Array.isArray(insights) && insights.length > 0 ? (
                   insights.map((insight: Insight) => (
@@ -343,7 +479,8 @@ export default function AIAssistant() {
           </CardContent>
         </Card>
 
-        <Card className="mt-4 hidden lg:block">
+        {/* Quick Actions */}
+        <Card className="hidden lg:block">
           <CardHeader>
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>

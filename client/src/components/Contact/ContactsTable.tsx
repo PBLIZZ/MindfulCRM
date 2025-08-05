@@ -1,11 +1,11 @@
 import { useState, useMemo, useEffect } from "react"
-import { ColumnDef, PaginationState, SortingState, ColumnFiltersState, VisibilityState } from "@tanstack/react-table"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
+import type { ColumnDef, PaginationState, SortingState, ColumnFiltersState, VisibilityState } from "@tanstack/react-table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.js"
+import { Badge } from "@/components/ui/badge.js"
+import { Button } from "@/components/ui/button.js"
+import { Input } from "@/components/ui/input.js"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.js"
+import { Checkbox } from "@/components/ui/checkbox.js"
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu.js"
 import { 
   Table,
   TableBody,
@@ -22,15 +22,15 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table.js"
 import { 
   Mail, 
   Phone, 
-  Calendar, 
+   
   MessageSquare, 
   Eye, 
   Edit, 
-  Trash, 
+  Trash2, 
   Search,
   Filter,
   Download,
@@ -40,7 +40,10 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  RefreshCw
+  RefreshCw,
+  Camera,
+  Sparkles,
+  Plus
 } from "lucide-react"
 import {
   useReactTable,
@@ -64,8 +67,8 @@ export type Contact = {
   lastContact?: string
   sentiment?: number
   engagementTrend?: 'improving' | 'stable' | 'declining'
-  extractedFields?: Record<string, any>
-  revenueData?: Record<string, any>
+  extractedFields?: Record<string, unknown>
+  revenueData?: Record<string, unknown>
   referralCount?: number
   createdAt: string
   updatedAt: string
@@ -77,7 +80,9 @@ interface ContactsTableProps {
   onEditContact?: (contact: Contact) => void
   onDeleteContact?: (contact: Contact) => void
   onBulkAction?: (action: string, contactIds: string[]) => void
-  onExportData?: (format: string) => void
+  _onExportData?: (format: string) => void
+  onAddContact?: () => void
+  onAITool?: (tool: string) => void
 }
 
 const useDebounce = (value: string, delay: number) => {
@@ -96,18 +101,7 @@ const useDebounce = (value: string, delay: number) => {
   return debouncedValue
 }
 
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active':
-      return 'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100'
-    case 'inactive':
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
-    case 'potential':
-      return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100'
-    default:
-      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
-  }
-}
+
 
 const getLifecycleStageColor = (stage: string) => {
   switch (stage) {
@@ -148,23 +142,30 @@ const getInitials = (name: string) => {
   )
 }
 
-const DEFAULT_PREFERENCES = {
+const DEFAULT_PREFERENCES: TablePreferences = {
   pageSize: 25,
   columnVisibility: {},
   sorting: [],
   filters: []
 }
 
-const loadPreferences = () => {
+interface TablePreferences {
+  pageSize: number;
+  columnVisibility: Record<string, boolean>;
+  sorting: SortingState;
+  filters: Array<{ id: string; value: unknown }>;
+}
+
+const loadPreferences = (): TablePreferences => {
   try {
     const saved = localStorage.getItem('contacts-table-preferences')
-    return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) } : DEFAULT_PREFERENCES
+    return saved ? { ...DEFAULT_PREFERENCES, ...JSON.parse(saved) as Partial<TablePreferences> } : DEFAULT_PREFERENCES
   } catch {
     return DEFAULT_PREFERENCES
   }
 }
 
-const savePreferences = (preferences: any) => {
+const savePreferences = (preferences: Partial<TablePreferences>) => {
   try {
     localStorage.setItem('contacts-table-preferences', JSON.stringify(preferences))
   } catch {
@@ -178,14 +179,16 @@ export function ContactsTable({
   onEditContact, 
   onDeleteContact,
   onBulkAction,
-  onExportData
+  _onExportData,
+  onAddContact,
+  onAITool,
 }: ContactsTableProps) {
   const [preferences] = useState(() => loadPreferences())
   const [globalFilter, setGlobalFilter] = useState('')
   const [sorting, setSorting] = useState<SortingState>(preferences.sorting || [])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(preferences.columnVisibility || {})
-  const [rowSelection, setRowSelection] = useState({})
+  const [rowSelection, setRowSelection] = useState<Record<string, boolean>>({})
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: preferences.pageSize || 25,
@@ -255,7 +258,7 @@ export function ContactsTable({
         return (
           <div className="flex items-center space-x-3">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={contact.avatarUrl} alt={contact.name} />
+              <AvatarImage src={contact.avatarUrl ?? undefined} alt={contact.name} />
               <AvatarFallback className="text-xs">
                 {getInitials(contact.name)}
               </AvatarFallback>
@@ -287,9 +290,9 @@ export function ContactsTable({
               variant="ghost"
               size="sm"
               className="h-4 w-4 p-0"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation()
-                navigator.clipboard.writeText(email)
+                await navigator.clipboard.writeText(email)
               }}
             >
               📋
@@ -408,7 +411,7 @@ export function ContactsTable({
       header: "Tags",
       cell: ({ row }) => {
         const contact = row.original
-        const tags = contact.tags || []
+        const tags = contact.tags ?? []
         const displayTags = tags.slice(0, 3)
         const extraCount = tags.length - 3
 
@@ -446,8 +449,8 @@ export function ContactsTable({
       cell: ({ row }) => {
         const contact = row.original
         const notes = contact.notes
-        const voiceNotes = contact.voiceNotes || []
-        const hasContent = notes || voiceNotes.length > 0
+        const voiceNotes = contact.voiceNotes ?? []
+        const hasContent = notes ?? voiceNotes.length > 0
 
         return (
           <div className="flex items-center space-x-2">
@@ -478,10 +481,10 @@ export function ContactsTable({
     },
     ...dynamicColumns.map(fieldName => ({
       id: `extracted_${fieldName}`,
-      accessorFn: (row: Contact) => row.extractedFields?.[fieldName] || '',
+      accessorFn: (row: Contact) => row.extractedFields?.[fieldName] ?? '',
       header: fieldName.charAt(0).toUpperCase() + fieldName.slice(1),
-      cell: ({ getValue }: any) => {
-        const value = getValue()
+      cell: ({ getValue }: { getValue: () => unknown }) => {
+        const value = getValue() as string | number | boolean | null | undefined
         return value ? (
           <span className="text-sm text-muted-foreground">{String(value)}</span>
         ) : (
@@ -507,7 +510,7 @@ export function ContactsTable({
               }}
               title="View contact details"
             >
-              <Eye className="h-4 w-4" />
+              <Eye className="h-4 w-4 text-sky-500" />
             </Button>
             
             {onEditContact && (
@@ -521,7 +524,7 @@ export function ContactsTable({
                 }}
                 title="Edit contact"
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="h-4 w-4 text-green-500" />
               </Button>
             )}
             
@@ -536,7 +539,7 @@ export function ContactsTable({
                 }}
                 title="Delete contact"
               >
-                <Trash className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -550,11 +553,11 @@ export function ContactsTable({
       // Global search filter
       const searchMatch = !debouncedGlobalFilter ||
         contact.name.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ||
-        contact.email?.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ||
-        contact.phone?.includes(debouncedGlobalFilter) ||
-        Object.values(contact.extractedFields || {}).some(value => 
+        (contact.email?.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ??
+        contact.phone?.includes(debouncedGlobalFilter) ??
+        Object.values(contact.extractedFields ?? {}).some(value => 
           String(value).toLowerCase().includes(debouncedGlobalFilter.toLowerCase())
-        )
+        ))
       
       // Lifecycle filter
       const lifecycleMatch = lifecycleFilter === 'all' || contact.lifecycleStage === lifecycleFilter
@@ -575,6 +578,7 @@ export function ContactsTable({
       globalFilter: debouncedGlobalFilter,
     },
     enableRowSelection: true,
+    getRowId: (row) => row.id,
     onRowSelectionChange: setRowSelection,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -589,8 +593,8 @@ export function ContactsTable({
     manualFiltering: false,
   })
 
-  const selectedRows = table.getFilteredSelectedRowModel().rows
-  const selectedContactIds = selectedRows.map(row => row.original.id)
+  
+  const selectedContactIds = Object.keys(rowSelection).filter(id => rowSelection[id])
 
   const resetPreferences = () => {
     setColumnVisibility({})
@@ -642,21 +646,18 @@ export function ContactsTable({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                  Actions ({selectedContactIds.length})
+                  Bulk Actions ({selectedContactIds.length})
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onBulkAction('enrich_photos', selectedContactIds)}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Enrich Photos ({selectedContactIds.length})
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onBulkAction('export', selectedContactIds)}>
                   <Download className="mr-2 h-4 w-4" />
-                  Export Selected
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onExportData?.('json')}>
-                  <Download className="mr-2 h-4 w-4" />
                   Export as JSON
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onExportData?.('csv')}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export as CSV
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onBulkAction('add_tag', selectedContactIds)}>
@@ -667,13 +668,12 @@ export function ContactsTable({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => onBulkAction('delete', selectedContactIds)}>
-                  <Trash className="mr-2 h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" />
                   Delete Selected
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-
 
           {/* Column Visibility */}
           <DropdownMenu>
@@ -710,6 +710,32 @@ export function ContactsTable({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* AI Tools */}
+          {onAITool && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  AI Tools
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => onAITool('enrich_photos')}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Enrich All Photos
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
+          {/* Add Contact */}
+          {onAddContact && (
+            <Button onClick={onAddContact}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Contact
+            </Button>
+          )}
         </div>
       </div>
 

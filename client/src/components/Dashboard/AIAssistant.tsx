@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useVoiceInput } from "@/hooks/useVoiceInput";
-import { useAuth } from "@/contexts/AuthContext";
-import { apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.js";
+import { Button } from "@/components/ui/button.js";
+import { Input } from "@/components/ui/input.js";
+import { useVoiceInput } from "@/hooks/useVoiceInput.js";
+import { useAuth } from "@/contexts/AuthContext.js";
+import { apiRequest } from "@/lib/queryClient.js";
 import { Mic, MicOff, Send, Bot, Calendar, BarChart3, RefreshCw, Clock, MapPin, Users } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -14,6 +14,28 @@ interface Message {
   content: string;
   isUser: boolean;
   timestamp: Date;
+}
+
+interface AIChatResponse {
+  response: string;
+  context?: unknown;
+}
+
+interface CalendarAttendee {
+  email: string;
+  displayName?: string;
+}
+
+interface CalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  location?: string;
+  startTime: string;
+  endTime: string;
+  attendees?: CalendarAttendee[];
+  calendarName?: string;
+  calendarColor?: string;
 }
 
 export default function AIAssistant() {
@@ -29,7 +51,7 @@ export default function AIAssistant() {
   const [inputMessage, setInputMessage] = useState("");
   
   // Fetch upcoming calendar events
-  const { data: upcomingEvents, isLoading: eventsLoading, refetch: refetchEvents } = useQuery({
+  const { data: upcomingEvents, isLoading: eventsLoading, refetch: refetchEvents } = useQuery<CalendarEvent[]>({
     queryKey: ['/api/calendar/upcoming?limit=5'],
   });
   
@@ -44,9 +66,9 @@ export default function AIAssistant() {
         message,
         context: { userId: user?.id }
       });
-      return response.json();
+      return response.json() as Promise<AIChatResponse>;
     },
-    onSuccess: (data) => {
+    onSuccess: (data: AIChatResponse) => {
       const aiMessage: Message = {
         id: Date.now().toString(),
         content: data.response,
@@ -55,7 +77,7 @@ export default function AIAssistant() {
       };
       setMessages(prev => [...prev, aiMessage]);
     },
-    onError: (error) => {
+    onError: () => {
       const errorMessage: Message = {
         id: Date.now().toString(),
         content: "I'm sorry, I encountered an error. Please try again or check your OpenAI API configuration.",
@@ -73,7 +95,7 @@ export default function AIAssistant() {
     },
     onSuccess: () => {
       // Refetch events after sync
-      refetchEvents();
+      void refetchEvents();
     },
   });
 
@@ -179,8 +201,8 @@ export default function AIAssistant() {
                 
                 {message.isUser && (
                   <img
-                    src={user?.picture || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"}
-                    alt={user?.name || "User"}
+                    src={user?.picture ?? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"}
+                    alt={user?.name ?? "User"}
                     className="w-8 h-8 rounded-full shrink-0"
                   />
                 )}
@@ -284,17 +306,17 @@ export default function AIAssistant() {
             </div>
           ) : upcomingEvents && Array.isArray(upcomingEvents) && upcomingEvents.length > 0 ? (
             <div className="space-y-3">
-              {upcomingEvents.map((event: any) => {
+              {upcomingEvents.map((event: CalendarEvent) => {
                 const startTime = new Date(event.startTime);
                 const endTime = event.endTime ? new Date(event.endTime) : null;
-                const attendees = event.attendees ? (typeof event.attendees === 'string' ? JSON.parse(event.attendees) : event.attendees) : [];
+                const attendees = event.attendees ?? [];
                 
                 return (
                   <div key={event.id} className="border rounded-lg p-3 space-y-2">
                     {/* Calendar and Title */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-sm leading-tight">{event.summary || 'Untitled Event'}</h4>
+                        <h4 className="font-medium text-sm leading-tight">{event.summary ?? 'Untitled Event'}</h4>
                         {event.calendarName && (
                           <div className="flex items-center gap-1 mt-1">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
@@ -339,7 +361,7 @@ export default function AIAssistant() {
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Users className="h-3 w-3" />
                         <span className="break-words">
-                          {attendees.slice(0, 2).map((attendee: any) => attendee.email || attendee.displayName).join(', ')}
+                          {attendees.slice(0, 2).map((attendee: CalendarAttendee) => attendee.email || attendee.displayName).join(', ')}
                           {attendees.length > 2 && ` +${attendees.length - 2} more`}
                         </span>
                       </div>

@@ -1,9 +1,9 @@
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext.js';
 import { useLocation } from 'wouter';
 import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import logoPath from '@assets/logo_1753860249688.png';
+import { Button } from '@/components/ui/button.js';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.js';
+import logoPath from '@/assets/logo_1753860249688.png';
 
 export default function Login() {
   const { user, isLoading, login } = useAuth();

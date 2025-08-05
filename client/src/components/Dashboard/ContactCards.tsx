@@ -1,13 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.js";
+import { Button } from "@/components/ui/button.js";
+import { Progress } from "@/components/ui/progress.js";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.js";
 import { formatDistanceToNow } from "date-fns";
+import { apiRequest } from "@/lib/queryClient.js";
+
+interface Contact {
+  name: string;
+  lastContact?: string | null;
+}
+
+interface Interaction {
+  id: string;
+  content: string;
+  timestamp: string;
+  type: string;
+  contact: Contact;
+}
+
+
 
 export default function ContactCards() {
-  const { data: recentInteractions, isLoading: loadingInteractions } = useQuery({
+  const { data: recentInteractions, isLoading: loadingInteractions } = useQuery<Interaction[]>({
     queryKey: ["/api/interactions/recent"],
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/interactions/recent");
+      return response.json() as Promise<Interaction[]>;
+    },
     refetchInterval: 300000,
   });
 
@@ -23,7 +43,7 @@ export default function ContactCards() {
     );
   }
 
-  const getStatusColor = (interaction: any) => {
+  const getStatusColor = (interaction: Interaction) => {
     if (!interaction.contact.lastContact) return "bg-gray-500";
     
     const daysSinceContact = Math.floor(
@@ -35,7 +55,7 @@ export default function ContactCards() {
     return "bg-red-500";
   };
 
-  const getStatusText = (interaction: any) => {
+  const getStatusText = (interaction: Interaction) => {
     if (!interaction.contact.lastContact) return "No Contact";
     
     const daysSinceContact = Math.floor(
@@ -67,7 +87,7 @@ export default function ContactCards() {
         
         <CardContent className="space-y-4">
           {recentInteractions && Array.isArray(recentInteractions) && recentInteractions.length > 0 ? (
-            recentInteractions.slice(0, 3).map((interaction: any) => (
+            recentInteractions.slice(0, 3).map((interaction: Interaction) => (
               <div
                 key={interaction.id}
                 className="flex items-start space-x-4 p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"

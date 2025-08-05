@@ -1,0 +1,15 @@
+echo "🚀 Running pre-push checks..."
+
+# Run TypeScript type checking again
+echo "🔍 Final TypeScript check..."
+npm run check
+
+# Check for high-severity security vulnerabilities
+echo "🔒 Security audit..."
+npm audit --audit-level=high
+
+# Check if build passes
+echo "🏗️  Testing build..."
+npm run build
+
+echo "✅ Pre-push checks completed! Ready to push."

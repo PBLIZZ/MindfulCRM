@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui/button.js'
 import { 
   Dialog, 
   DialogContent, 
@@ -8,11 +8,11 @@ import {
   DialogFooter, 
   DialogHeader, 
   DialogTitle 
-} from '@/components/ui/dialog'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Progress } from '@/components/ui/progress'
+} from '@/components/ui/dialog.js'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js'
+import { Progress } from '@/components/ui/progress.js'
 import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast.js'
 
 interface ContactPhotoUploadProps {
   contactId: string
@@ -128,13 +128,13 @@ export function ContactPhotoUpload({
       })
       
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Upload failed')
+        const error = await response.json() as { message?: string }
+        throw new Error(error.message ?? 'Upload failed')
       }
       
-      return response.json()
+      return response.json() as Promise<UploadResponse>
     },
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.success) {
         toast({
           title: 'Photo uploaded successfully',
@@ -142,7 +142,7 @@ export function ContactPhotoUpload({
         })
         
         // Invalidate contacts query to refresh the data
-        queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
+        await queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
         
         // Close dialog and reset state
         onOpenChange(false)
@@ -154,7 +154,7 @@ export function ContactPhotoUpload({
     onError: (error: Error) => {
       toast({
         title: 'Upload failed',
-        description: error.message,
+        description: error.message ?? 'An unknown error occurred',
         variant: 'destructive'
       })
       setUploadProgress(0)
@@ -215,10 +215,10 @@ export function ContactPhotoUpload({
           description: 'Contact photo has been removed.'
         })
         
-        queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
+        await queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
         onOpenChange(false)
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'Failed to remove photo',
         description: 'Please try again.',
@@ -258,7 +258,7 @@ export function ContactPhotoUpload({
           <div className="flex justify-center">
             <Avatar className="h-24 w-24">
               <AvatarImage 
-                src={preview || currentPhotoUrl} 
+                src={preview ?? currentPhotoUrl} 
                 alt={contactName} 
               />
               <AvatarFallback className="text-2xl">

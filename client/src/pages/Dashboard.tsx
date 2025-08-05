@@ -1,6 +1,7 @@
-import StatsCards from "@/components/Dashboard/StatsCards";
-import ContactCards from "@/components/Dashboard/ContactCards";
-import AIAssistant from "@/components/Dashboard/AIAssistant";
+import StatsCards from "@/components/Dashboard/StatsCards.js";
+import ContactCards from "@/components/Dashboard/ContactCards.js";
+import AIAssistant from "@/components/Dashboard/AIAssistant.js";
+import PhotoEnrichment from "@/components/Dashboard/PhotoEnrichment.js";
 
 export default function Dashboard() {
   return (
@@ -18,7 +19,8 @@ export default function Dashboard() {
         <div className="lg:col-span-2">
           <ContactCards />
         </div>
-        <div>
+        <div className="space-y-6">
+          <PhotoEnrichment />
           <AIAssistant />
         </div>
       </div>

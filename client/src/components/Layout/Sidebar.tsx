@@ -1,7 +1,12 @@
 import { useLocation } from 'wouter';
-import { cn } from '@/lib/utils';
-import logoPath from '@assets/logo_1753860249688.png';
+import { cn } from '@/lib/utils.js';
+// Logo import removed - using text-based logo instead
 import { useQuery } from '@tanstack/react-query';
+
+interface SyncStatus {
+  lastSync: string;
+  status: 'success' | 'error' | 'pending';
+}
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: 'fas fa-th-large' },
@@ -15,7 +20,7 @@ const navigation = [
 export default function Sidebar() {
   const [location] = useLocation();
 
-  const { data: syncStatus } = useQuery({
+  const { data: syncStatus } = useQuery<SyncStatus[]>({
     queryKey: ['/api/sync/status'],
     refetchInterval: 60000, // Refetch every minute
   });
@@ -23,7 +28,7 @@ export default function Sidebar() {
   const getLastSyncText = () => {
     if (!syncStatus || !Array.isArray(syncStatus) || syncStatus.length === 0) return 'Never synced';
 
-    const latestSync = syncStatus.reduce((latest: any, current: any) => {
+    const latestSync = syncStatus.reduce((latest: SyncStatus, current: SyncStatus) => {
       return new Date(current.lastSync) > new Date(latest.lastSync) ? current : latest;
     });
 
@@ -44,7 +49,7 @@ export default function Sidebar() {
   const getSyncStatusColor = () => {
     if (!syncStatus || !Array.isArray(syncStatus) || syncStatus.length === 0) return 'bg-gray-500';
 
-    const hasError = syncStatus.some((s: any) => s.status === 'error');
+    const hasError = syncStatus.some((s: SyncStatus) => s.status === 'error');
     if (hasError) return 'bg-red-500';
 
     return 'bg-green-500';
@@ -54,7 +59,7 @@ export default function Sidebar() {
     <aside className='w-64 bg-card border-r border-border shadow-sm'>
       <div className='p-6 border-b border-border'>
         <div className='flex items-center space-x-3'>
-          <img src={logoPath} alt='Wellness Hub Logo' className='w-10 h-10 rounded-lg' />
+          <div className='w-10 h-10 rounded-lg bg-teal-600 flex items-center justify-center text-white font-bold text-lg'>WH</div>
           <div>
             <h1 className='text-lg font-bold text-teal-700 dark:text-teal-300'>Wellness Hub</h1>
             <p className='text-xs text-muted-foreground'>Data Intelligence</p>

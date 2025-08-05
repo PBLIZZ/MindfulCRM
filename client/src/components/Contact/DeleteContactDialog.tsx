@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,11 +9,11 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Separator } from '@/components/ui/separator'
+} from '@/components/ui/alert-dialog.js'
+import { Card, CardContent } from '@/components/ui/card.js'
+import { Badge } from '@/components/ui/badge.js'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js'
+import { Separator } from '@/components/ui/separator.js'
 import { 
   Trash2, 
   AlertTriangle, 
@@ -24,8 +23,8 @@ import {
   Target,
   Loader2
 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
-import type { Contact } from './ContactsTable'
+import { useToast } from '@/hooks/use-toast.js'
+import type { Contact } from './ContactsTable.js'
 
 interface DeleteContactDialogProps {
   contact: Contact | null
@@ -72,11 +71,11 @@ export function DeleteContactDialog({
       })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.message || 'Failed to delete contact')
+        const error = await response.json() as { message?: string }
+        throw new Error(error.message ?? 'Failed to delete contact')
       }
 
-      return response.json()
+      return response.json() as Promise<{ success: boolean }>
     },
     onSuccess: () => {
       toast({
@@ -84,8 +83,8 @@ export function DeleteContactDialog({
         description: 'The contact and all associated data have been permanently deleted.',
       })
       
-      queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] })
+      void queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
+      void queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] })
       
       onOpenChange(false)
       setCascadeInfo(null)
@@ -93,7 +92,7 @@ export function DeleteContactDialog({
     onError: (error: Error) => {
       toast({
         title: 'Failed to delete contact',
-        description: error.message,
+        description: error.message ?? 'An unknown error occurred',
         variant: 'destructive'
       })
     }
@@ -109,7 +108,7 @@ export function DeleteContactDialog({
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const data = await response.json() as CascadeInfo
         setCascadeInfo(data)
       } else {
         // If endpoint doesn't exist, show default info
@@ -122,8 +121,8 @@ export function DeleteContactDialog({
           photos: 0
         })
       }
-    } catch (error) {
-      console.warn('Failed to load cascade info:', error)
+    } catch {
+      // Failed to load cascade info
       setCascadeInfo({
         interactions: 0,
         goals: 0,
@@ -139,7 +138,7 @@ export function DeleteContactDialog({
 
   const handleOpenChange = (newOpen: boolean) => {
     if (newOpen && contact && !cascadeInfo) {
-      loadCascadeInfo(contact.id)
+      void loadCascadeInfo(contact.id)
     } else if (!newOpen) {
       setCascadeInfo(null)
     }
@@ -155,7 +154,7 @@ export function DeleteContactDialog({
   if (!contact) return null
 
   const totalRelatedItems = cascadeInfo 
-    ? Object.values(cascadeInfo).reduce((sum, count) => sum + count, 0)
+    ? (Object.values(cascadeInfo) as number[]).reduce((sum: number, count: number) => sum + count, 0)
     : 0
 
   return (
@@ -187,9 +186,6 @@ export function DeleteContactDialog({
                   <h4 className="font-semibold">{contact.name}</h4>
                   <p className="text-sm text-muted-foreground">{contact.email}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {contact.status}
-                    </Badge>
                     {contact.lifecycleStage && (
                       <Badge variant="outline" className="text-xs">
                         {contact.lifecycleStage.replace('_', ' ')}
