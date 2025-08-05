@@ -8,7 +8,7 @@
 
 #### The Database Schema Law
 
-The file `shared/schema.ts` is the **single, absolute, and non-negotiable source of truth** for the shape of our data.
+The file `shared/schema.ts` is the **single, absolute, and non-negotiable source of truth** for the shape of our data AT REST.
 
 #### The Database Schema Rationale
 
@@ -33,8 +33,6 @@ Manual types introduce the risk of "type drift," where the code's understanding 
 After any change to `shared/schema.ts`, the corresponding inferred types (`User`, `Contact`, etc.) will automatically update, and TypeScript will immediately tell us every single place in our codebase that needs to be updated to handle the new data shape. This is a feature, not a bug.
 
 ### 3. The Great `null` vs. `undefined` Debate: The Final Verdict
-
-This is the source of the remaining errors. Here is the final, simple rule.
 
 #### The `null` vs. `undefined` Law
 
@@ -84,3 +82,51 @@ app.get('/api/contacts/:id', requireAuth, async (req: Request, res: Response) =>
   res.json(nullsToUndefined(contactFromDb));
 });
 ```
+
+### 4. The `any` vs. `unknown` Mandate: Safety First
+
+#### The `any` vs. `unknown` Law
+
+The type `any` is forbidden in our codebase. It is an escape hatch from the type system, and we will not use it. Any existing `any` types are considered technical debt and must be removed.
+
+The type `unknown` is our required tool for handling data whose type is not known at compile time. This applies specifically to data coming from external sources: API request bodies `req.body`, network responses `fetch`, and catch block error objects `error`.
+
+If you know the shape of the data, you must use a specific type or a Zod schema to parse and validate it.
+
+Do not be lazy. If you receive a User from an API, create a User type and validate the response against it.
+
+#### The `any` vs. `unknown` Rationale
+
+`any` allows you to do anything, which leads to runtime errors and negates the benefits of TypeScript. `unknown` forces you to do something — a type check or a type assertion—before you can use the variable. It forces safe coding practices. Speed over accuracy in typing is a false economy that costs us more time in debugging. We will be accurate from the start.
+
+#### The `any` vs. `unknown` Process
+
+When you receive data from an external source, its type is unknown. Use a type guard or a Zod schema to validate that the unknown data matches the shape you expect. Only after this validation can you assign it to a specific, known type and use it in your application.
+
+```typescript
+// FORBIDDEN PATTERN
+app.post('/api/users', (req: Request, res: Response) => {
+  const userData: any = req.body; // Unsafe, FORBIDDEN
+  console.log(userData.profile.name); // This could crash at runtime
+});
+
+// REQUIRED PATTERN
+import { userSchema } from '../schemas/user.schema.js';
+
+app.post('/api/users', (req: Request, res: Response) => {
+  try {
+    // req.body is treated as `unknown` and validated by Zod
+    const validatedUserData = userSchema.parse(req.body);
+    // `validatedUserData` is now a fully typed and safe object
+    console.log(validatedUserData.profile.name);
+  } catch (error) {
+    // ... error handling
+  }
+});
+```
+
+### 5. The `Error Handling` Doctrine: Fail Predictably
+
+#### The Error Handling Law
+
+All errors must be handled predictably. This means that all errors must be caught and handled in a way that is consistent with the rest of the application. We will never let an error propagate up the call stack without being handled.
