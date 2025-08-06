@@ -5,7 +5,8 @@ FROM node:20-alpine AS base
 WORKDIR /app
 COPY package*.json ./
 # Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# --ignore-scripts tells npm to not run the "prepare" script (husky)
+RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # Stage 2: Builder for compiling the application
 FROM node:20-alpine AS builder
@@ -23,7 +24,6 @@ WORKDIR /app
 COPY --from=base /app/node_modules ./node_modules
 # Copy compiled code from 'builder' stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/client/dist ./client/dist
 # If you have migrations, copy them too
 # COPY --from=builder /app/migrations ./migrations
 

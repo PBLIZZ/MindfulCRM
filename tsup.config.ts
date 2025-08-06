@@ -10,7 +10,7 @@ export default defineConfig({
   sourcemap: true,
   dts: false,
   splitting: false,
-  outDir: 'dist',
+  outDir: 'dist/server',
   // Fix: Mark everything except local code as external
   external: [
     /^[^./]|^\.[^./]/, // All node_modules
