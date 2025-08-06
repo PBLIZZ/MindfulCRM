@@ -14,16 +14,16 @@ calendarRouter.get('/events', async (req, res) => {
   if (!isAuthenticatedUser(req.user)) {
     return res.status(401).json({ error: 'User not authenticated' });
   }
-  
+
   // Validate query parameters
   const queryValidation = calendarEventQuerySchema.safeParse(req.query);
   if (!queryValidation.success) {
-    return res.status(400).json({ 
-      error: 'Invalid query parameters', 
-      details: queryValidation.error.errors 
+    return res.status(400).json({
+      error: 'Invalid query parameters',
+      details: queryValidation.error.errors
     });
   }
-  
+
   try {
     const { month } = queryValidation.data;
     const events = await calendarService.getCalendarEvents(req.user.id, month);
@@ -55,18 +55,18 @@ calendarRouter.post('/sync-initial', async (req, res) => {
     if (!isAuthenticatedUser(req.user)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    
+
     // Validate request body
     const bodyResult = calendarSyncRequestSchema.safeParse(req.body);
     if (!bodyResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid sync request data', 
-        details: bodyResult.error.errors 
+      return res.status(400).json({
+        error: 'Invalid sync request data',
+        details: bodyResult.error.errors
       });
     }
-    
+
     const { months, useFreeModel } = bodyResult.data;
-    
+
     const result = await calendarService.runInitialSync(req.user, months, useFreeModel);
     res.json({
       success: true,

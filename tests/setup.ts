@@ -12,7 +12,7 @@ jest.setTimeout(30000);
 beforeAll(async () => {
   // Setup test database
   await setupTestDatabase();
-  
+
   // Verify database connection
   try {
     await db.execute('SELECT 1');

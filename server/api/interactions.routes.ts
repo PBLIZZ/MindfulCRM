@@ -45,18 +45,18 @@ interactionsRouter.post(
       // Validate request body
       const bodyResult = createInteractionSchema.safeParse(req.body);
       if (!bodyResult.success) {
-        return res.status(400).json({ 
-          error: 'Invalid interaction data', 
-          details: bodyResult.error.errors 
+        return res.status(400).json({
+          error: 'Invalid interaction data',
+          details: bodyResult.error.errors
         });
       }
-      
+
       const { timestamp, ...interactionData } = bodyResult.data;
       const processedData = {
         ...interactionData,
         timestamp: new Date(timestamp),
       };
-      
+
       const interaction = await interactionService.createInteraction(processedData);
       res.status(201).json(interaction);
     } catch (error) {

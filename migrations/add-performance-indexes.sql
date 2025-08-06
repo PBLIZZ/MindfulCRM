@@ -8,7 +8,7 @@ CREATE INDEX IF NOT EXISTS "contacts_user_id_idx" ON "contacts" USING btree ("us
 -- Index for contact_tags.contact_id (JOIN performance for contact -> tags relationship)
 CREATE INDEX IF NOT EXISTS "contact_tags_contact_id_idx" ON "contact_tags" USING btree ("contact_id");
 
--- Index for contact_tags.tag_id (JOIN performance for tags -> contact relationship)  
+-- Index for contact_tags.tag_id (JOIN performance for tags -> contact relationship)
 CREATE INDEX IF NOT EXISTS "contact_tags_tag_id_idx" ON "contact_tags" USING btree ("tag_id");
 
 -- Composite index for contact_tags to optimize dual-column lookups
@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS "contact_photos_contact_id_idx" ON "contact_photos" U
 
 -- Analyze tables after index creation for optimal query planning
 ANALYZE contacts;
-ANALYZE contact_tags; 
+ANALYZE contact_tags;
 ANALYZE tags;
 ANALYZE interactions;
 ANALYZE goals;

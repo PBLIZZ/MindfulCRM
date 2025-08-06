@@ -2,12 +2,12 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
 import type { CalendarEvent } from '../../shared/schema.js';
 import type { ContactData } from '../types/external-apis.js';
 import { sanitizeForLLM } from '../utils/sanitizers.js';
-import { 
-  isNoReplyEmail, 
-  isSpamContent, 
-  isPersonalContent, 
+import {
+  isNoReplyEmail,
+  isSpamContent,
+  isPersonalContent,
   hasBusinessRelevance,
-  extractEmailsFromAttendees 
+  extractEmailsFromAttendees
 } from '../utils/relevance-patterns.js';
 import { extractJSON, validateBoolean, validateString, createErrorResponse } from '../utils/extraction-helpers.js';
 
@@ -39,16 +39,16 @@ export class CalendarFilterBrain {
   private preFilter(input: CalendarFilterInput): CalendarFilterOutput | null {
     const { event, contacts } = input;
     const knownContactEmails = new Set(contacts.map(c => c.email.toLowerCase()));
-    
+
     // Get valid attendee emails
 const attendeeEmails = Array.isArray(event.attendees) ? extractEmailsFromAttendees(event.attendees) : [];
     const hasKnownContacts = attendeeEmails.some(email => knownContactEmails.has(email));
-    
+
     // Check title and description content
     const title = event.summary ?? '';
     const description = event.description ?? '';
     const combinedContent = `${title} ${description}`.toLowerCase();
-    
+
     // Auto-reject spam content
     if (isSpamContent(combinedContent)) {
       return {
@@ -58,7 +58,7 @@ const attendeeEmails = Array.isArray(event.attendees) ? extractEmailsFromAttende
         suggestedAction: 'ignore'
       };
     }
-    
+
     // Auto-reject personal content with no known contacts
     if (isPersonalContent(combinedContent) && !hasKnownContacts) {
       return {
@@ -68,7 +68,7 @@ const attendeeEmails = Array.isArray(event.attendees) ? extractEmailsFromAttende
         suggestedAction: 'ignore'
       };
     }
-    
+
     // Auto-reject if all attendees are no-reply emails
     if (attendeeEmails.length > 0 && attendeeEmails.every(email => isNoReplyEmail(email))) {
       return {
@@ -78,7 +78,7 @@ const attendeeEmails = Array.isArray(event.attendees) ? extractEmailsFromAttende
         suggestedAction: 'ignore'
       };
     }
-    
+
     // Auto-accept if has business relevance AND known contacts
     if (hasBusinessRelevance(combinedContent) && hasKnownContacts) {
       return {
@@ -88,7 +88,7 @@ const attendeeEmails = Array.isArray(event.attendees) ? extractEmailsFromAttende
         suggestedAction: 'process'
       };
     }
-    
+
     // Needs LLM analysis
     return null;
   }
@@ -172,7 +172,7 @@ Return JSON:
       return {
         isRelevant: validateBoolean(result.isRelevant, false),
         relevanceReason: validateString(result.relevanceReason, 'No reason provided'),
-        confidence: typeof result.confidence === 'number' ? 
+        confidence: typeof result.confidence === 'number' ?
           Math.max(0, Math.min(1, result.confidence)) : 0.5,
         suggestedAction: ['process', 'ignore', 'review'].includes(result.suggestedAction as string) ?
           result.suggestedAction as 'process' | 'ignore' | 'review' : 'review'

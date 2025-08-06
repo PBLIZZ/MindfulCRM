@@ -59,7 +59,7 @@ export function sanitizeForLLM(input: string): string {
   sanitized = sanitized.replace(/#{4,}/g, '###'); // Limit header levels
   sanitized = sanitized.replace(/\*{3,}/g, '**'); // Limit bold formatting
   sanitized = sanitized.replace(/_{3,}/g, '__'); // Limit italic formatting
-  
+
   // Remove potential code injection in markdown
   sanitized = sanitized.replace(/```[\s\S]*?```/g, '[CODE_BLOCK_REMOVED]');
   sanitized = sanitized.replace(/`[^`]*`/g, '[INLINE_CODE_REMOVED]');
@@ -84,7 +84,7 @@ export function sanitizeForLLM(input: string): string {
  */
 export function sanitizeContactInfo(info: string): string {
   const sanitized = sanitizeForLLM(info);
-  
+
   // Additional sanitization for contact info
   // Remove potential phone numbers that could be instructions
   return sanitized.replace(/\+?1?\s*\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/g, '[PHONE_NUMBER]');
@@ -95,7 +95,7 @@ export function sanitizeContactInfo(info: string): string {
  */
 export function sanitizeEmailContent(content: string): string {
   const sanitized = sanitizeForLLM(content);
-  
+
   // Remove email addresses that could contain instructions
   return sanitized.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '[EMAIL_ADDRESS]');
 }
@@ -115,7 +115,7 @@ export function sanitizeResponse<T>(data: T): T {
 
   if (typeof data === 'object') {
     const sanitized = { ...data } as Record<string, unknown>;
-    
+
     // Remove sensitive fields that should never be exposed in API responses
     const sensitiveFields = ['password', 'passwordHash', 'secret', 'token', 'privateKey', 'apiKey'];
     for (const field of sensitiveFields) {

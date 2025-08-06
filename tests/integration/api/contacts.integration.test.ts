@@ -26,15 +26,15 @@ function createTestApp(): Express {
   const app = express();
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  
+
   // Mock authentication middleware for testing
   app.use((req: any, res, next) => {
     req.user = { id: TEST_USERS.WELLNESS_COACH.id };
     next();
   });
-  
+
   app.use('/api/contacts', contactRoutes);
-  
+
   // Error handling middleware
   app.use((error: any, req: any, res: any, next: any) => {
     res.status(error.status || 500).json({
@@ -80,7 +80,7 @@ describe('Contact API Integration Tests', () => {
       expect(response.body).toHaveProperty('contacts');
       expect(Array.isArray(response.body.contacts)).toBe(true);
       expect(response.body.contacts).toHaveLength(testContext.contacts.length);
-      
+
       // Verify contact structure
       const firstContact = response.body.contacts[0];
       expect(firstContact).toHaveProperty('id');
@@ -92,7 +92,7 @@ describe('Contact API Integration Tests', () => {
     it('should handle empty contact list', async () => {
       // Arrange - clean up existing contacts
       await testContext.cleanup();
-      
+
       // Act
       const response = await request
         .get('/api/contacts')
@@ -249,13 +249,13 @@ describe('Contact API Integration Tests', () => {
     it('should update contact with tags', async () => {
       // Arrange
       const contactId = testContext.contacts[0].id;
-      
+
       // First create some tags
       const tagData = [
         { name: 'VIP Client', color: '#FFD700' },
         { name: 'Active Member', color: '#32CD32' }
       ];
-      
+
       const createdTags = await Promise.all(
         tagData.map(tag => storage.contacts.createTag(tag))
       );
@@ -318,7 +318,7 @@ describe('Contact API Integration Tests', () => {
     it('should handle cascade deletion of related data', async () => {
       // Arrange
       const contactId = testContext.contacts[0].id;
-      
+
       // Create some related data
       await storage.interactions.create({
         id: 'test-interaction',
@@ -436,7 +436,7 @@ describe('Contact API Integration Tests', () => {
           color: '#FF0000'
         });
         const contactIds = testContext.contacts.map(c => c.id);
-        
+
         // First add the tag to contacts
         await contactService.addTagToContacts(contactIds, tag.id);
 
@@ -456,14 +456,14 @@ describe('Contact API Integration Tests', () => {
     it('should handle requests with large contact lists', async () => {
       // This test ensures the API can handle users with many contacts
       const startTime = Date.now();
-      
+
       await request
         .get('/api/contacts')
         .expect(200);
-        
+
       const endTime = Date.now();
       const responseTime = endTime - startTime;
-      
+
       // Response should be under 1 second for reasonable contact lists
       expect(responseTime).toBeLessThan(1000);
     });
@@ -505,7 +505,7 @@ describe('Contact API Integration Tests', () => {
 
       // Should not crash the server
       const responses = await Promise.all(requests);
-      
+
       // At least some requests should succeed
       const successfulResponses = responses.filter(r => r.status === 200);
       expect(successfulResponses.length).toBeGreaterThan(0);

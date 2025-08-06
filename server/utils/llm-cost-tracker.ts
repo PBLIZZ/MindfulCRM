@@ -178,7 +178,7 @@ export class LLMCostTracker {
       const dayRecords = userRecords.filter(
         record => record.timestamp.toISOString().split('T')[0] === dateStr
       );
-      
+
       dailyTrend.push({
         date: dateStr,
         cost: dayRecords.reduce((sum, record) => sum + record.cost, 0),
@@ -192,7 +192,7 @@ export class LLMCostTracker {
     if (budgetLimits) {
       const todayCost = this.getDailyCost(userId, now);
       const monthlyCost = this.getMonthlyCost(userId, now);
-      
+
       budgetUtilization = {
         daily: budgetLimits.dailyLimit > 0 ? (todayCost / budgetLimits.dailyLimit) * 100 : 0,
         monthly: budgetLimits.monthlyLimit > 0 ? (monthlyCost / budgetLimits.monthlyLimit) * 100 : 0
@@ -311,7 +311,7 @@ export class LLMCostTracker {
     if (stats.totalCost > 10) {
       recommendations.push('Consider setting daily and monthly budget limits');
     }
-    
+
     if (stats.modelBreakdown['meta-llama/llama-3.1-8b-instruct:free']?.requests === 0) {
       recommendations.push('Try free models for non-critical operations to reduce costs');
     }
@@ -369,9 +369,9 @@ export class LLMCostTracker {
     endOfDay.setHours(23, 59, 59, 999);
 
     return this.usageRecords
-      .filter(record => 
-        record.userId === userId && 
-        record.timestamp >= startOfDay && 
+      .filter(record =>
+        record.userId === userId &&
+        record.timestamp >= startOfDay &&
         record.timestamp <= endOfDay
       )
       .reduce((sum, record) => sum + record.cost, 0);
@@ -382,9 +382,9 @@ export class LLMCostTracker {
     const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
 
     return this.usageRecords
-      .filter(record => 
-        record.userId === userId && 
-        record.timestamp >= startOfMonth && 
+      .filter(record =>
+        record.userId === userId &&
+        record.timestamp >= startOfMonth &&
         record.timestamp <= endOfMonth
       )
       .reduce((sum, record) => sum + record.cost, 0);

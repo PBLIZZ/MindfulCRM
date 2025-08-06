@@ -136,7 +136,7 @@ export default function ContactDetail({ contactId, onEditContact }: ContactDetai
                     <p><span className="font-medium">Status:</span> {contact.status ?? 'Unknown'}</p>
                   </div>
                 </div>
-                
+
                 <div>
                   <h4 className="font-medium mb-2">Engagement Metrics</h4>
                   <div className="space-y-2 text-sm">

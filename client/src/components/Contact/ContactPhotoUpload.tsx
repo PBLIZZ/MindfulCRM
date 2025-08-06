@@ -1,13 +1,13 @@
 import { useState, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button.js'
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '@/components/ui/dialog.js'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js'
 import { Progress } from '@/components/ui/progress.js'
@@ -46,12 +46,12 @@ const convertToWebP = (file: File): Promise<Blob> => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     const img = new Image()
-    
+
     img.onload = () => {
       // Calculate dimensions to maintain aspect ratio within max bounds
       const maxSize = 200
       let { width, height } = img
-      
+
       if (width > height) {
         if (width > maxSize) {
           height = (height * maxSize) / width
@@ -63,10 +63,10 @@ const convertToWebP = (file: File): Promise<Blob> => {
           height = maxSize
         }
       }
-      
+
       canvas.width = width
       canvas.height = height
-      
+
       // Draw and convert to WebP
       ctx?.drawImage(img, 0, 0, width, height)
       canvas.toBlob(
@@ -81,7 +81,7 @@ const convertToWebP = (file: File): Promise<Blob> => {
         0.8 // Quality setting
       )
     }
-    
+
     img.onerror = () => reject(new Error('Failed to load image'))
     img.src = URL.createObjectURL(file)
   })
@@ -104,21 +104,21 @@ export function ContactPhotoUpload({
   const uploadMutation = useMutation({
     mutationFn: async (file: File): Promise<UploadResponse> => {
       const formData = new FormData()
-      
+
       // Convert to WebP if not already
       let processedFile: File | Blob = file
       if (file.type !== 'image/webp') {
         processedFile = await convertToWebP(file)
       }
-      
+
       // Check file size after conversion
       if (processedFile.size > MAX_FILE_SIZE) {
         throw new Error(`File size must be under 250KB. Current size: ${Math.round(processedFile.size / 1024)}KB`)
       }
-      
+
       formData.append('photo', processedFile, `${contactId}.webp`)
       formData.append('contactId', contactId)
-      
+
       const response = await fetch('/api/contacts/upload-photo', {
         method: 'POST',
         body: formData,
@@ -126,12 +126,12 @@ export function ContactPhotoUpload({
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       })
-      
+
       if (!response.ok) {
         const error = await response.json() as { message?: string }
         throw new Error(error.message ?? 'Upload failed')
       }
-      
+
       return response.json() as Promise<UploadResponse>
     },
     onSuccess: async (data) => {
@@ -140,10 +140,10 @@ export function ContactPhotoUpload({
           title: 'Photo uploaded successfully',
           description: 'Contact photo has been updated.'
         })
-        
+
         // Invalidate contacts query to refresh the data
         await queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
-        
+
         // Close dialog and reset state
         onOpenChange(false)
         setPreview(null)
@@ -186,7 +186,7 @@ export function ContactPhotoUpload({
     }
 
     setSelectedFile(file)
-    
+
     // Create preview
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -214,7 +214,7 @@ export function ContactPhotoUpload({
           title: 'Photo removed',
           description: 'Contact photo has been removed.'
         })
-        
+
         await queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
         onOpenChange(false)
       }
@@ -257,9 +257,9 @@ export function ContactPhotoUpload({
           {/* Current/Preview Photo */}
           <div className="flex justify-center">
             <Avatar className="h-24 w-24">
-              <AvatarImage 
-                src={preview ?? currentPhotoUrl} 
-                alt={contactName} 
+              <AvatarImage
+                src={preview ?? currentPhotoUrl}
+                alt={contactName}
               />
               <AvatarFallback className="text-2xl">
                 {getInitials(contactName)}
@@ -276,7 +276,7 @@ export function ContactPhotoUpload({
               onChange={handleFileSelect}
               className="hidden"
             />
-            
+
             <Button
               type="button"
               variant="outline"
@@ -287,7 +287,7 @@ export function ContactPhotoUpload({
               <ImageIcon className="mr-2 h-4 w-4" />
               Choose Photo
             </Button>
-            
+
             <p className="text-xs text-muted-foreground text-center">
               Max file size: 250KB • Formats: JPEG, PNG, WebP
             </p>
@@ -339,11 +339,11 @@ export function ContactPhotoUpload({
               Remove Photo
             </Button>
           )}
-          
+
           <div className="flex gap-2">
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => handleOpenChange(false)}
               disabled={uploadMutation.isPending}
             >

@@ -130,7 +130,7 @@ export const updateUserConsent = async (allowScraping: boolean): Promise<Consent
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ 
+    body: JSON.stringify({
       allowProfilePictureScraping: allowScraping,
       gdprConsentDate: new Date().toISOString(),
       gdprConsentVersion: '1.0'

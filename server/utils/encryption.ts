@@ -22,7 +22,7 @@ export function encrypt(text: string): string {
   if (!text || text.trim() === '') {
     throw new Error('Cannot encrypt empty or null text');
   }
-  
+
   const salt = crypto.randomBytes(SALT_LENGTH);
   const iv = crypto.randomBytes(IV_LENGTH);
   const key = getKey(salt);
@@ -38,15 +38,15 @@ export function decrypt(encryptedText: string): string {
   if (!encryptedText || encryptedText.trim() === '') {
     throw new Error('Cannot decrypt empty or null text');
   }
-  
+
   const encryptedBuffer = Buffer.from(encryptedText, 'hex');
-  
+
   // Validate minimum buffer length
   const minLength = SALT_LENGTH + IV_LENGTH + TAG_LENGTH;
   if (encryptedBuffer.length < minLength) {
     throw new Error(`Invalid encrypted data: buffer too short (${encryptedBuffer.length} < ${minLength})`);
   }
-  
+
   const salt = encryptedBuffer.subarray(0, SALT_LENGTH);
   const iv = encryptedBuffer.subarray(SALT_LENGTH, SALT_LENGTH + IV_LENGTH);
   const tag = encryptedBuffer.subarray(SALT_LENGTH + IV_LENGTH, SALT_LENGTH + IV_LENGTH + TAG_LENGTH);

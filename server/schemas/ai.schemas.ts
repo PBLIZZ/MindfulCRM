@@ -8,7 +8,7 @@ export const enrichPhotoSchema = z.object({
   photoUrl: z.string().url('Invalid photo URL'),
   source: z.enum([
     'linkedin',
-    'gravatar', 
+    'gravatar',
     'clearbit',
     'ai_generated',
     'facebook',

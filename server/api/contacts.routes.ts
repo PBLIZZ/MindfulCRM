@@ -1,6 +1,5 @@
 /// <reference types="node" />
 import { Router, type Request, type Response } from 'express';
-import type { Express } from 'express-serve-static-core';
 import multer from 'multer';
 import { z } from 'zod';
 import fs from 'fs';
@@ -58,7 +57,7 @@ const contactsRouter = Router();
 const upload = multer({
   dest: 'temp/',
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
-  fileFilter: (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {

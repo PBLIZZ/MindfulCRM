@@ -32,11 +32,11 @@ export const BUSINESS_RELEVANCE_PATTERNS = [
   // Client session indicators
   /session|appointment|consultation|therapy|coaching/i,
   /client|patient|wellness|treatment/i,
-  
+
   // Business meeting indicators
   /meeting|conference|call|zoom|teams/i,
   /business|work|professional|training/i,
-  
+
   // Administrative indicators
   /admin|planning|review|follow.?up/i,
 ];
@@ -59,10 +59,10 @@ export function hasBusinessRelevance(content: string): boolean {
 
 export function extractEmailsFromAttendees(attendees: unknown[]): string[] {
   return attendees
-    .filter((a): a is { email: string } => 
-      a !== null && 
-      typeof a === 'object' && 
-      'email' in a && 
+    .filter((a): a is { email: string } =>
+      a !== null &&
+      typeof a === 'object' &&
+      'email' in a &&
       typeof (a as { email: unknown }).email === 'string'
     )
     .map(a => a.email.toLowerCase())

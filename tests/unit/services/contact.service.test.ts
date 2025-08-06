@@ -28,7 +28,7 @@ describe('ContactService', () => {
   beforeEach(() => {
     contactService = new ContactService();
     jest.clearAllMocks();
-    
+
     // Setup default mocks
     mockSafeFileOperation.mockReturnValue(true);
     (fs.existsSync as jest.MockedFunction<typeof fs.existsSync>).mockReturnValue(true);
@@ -177,7 +177,7 @@ describe('ContactService', () => {
         { id: TEST_TAGS.VIP_CLIENT.id, name: TEST_TAGS.VIP_CLIENT.name, color: TEST_TAGS.VIP_CLIENT.color },
         { id: 'temp_new_tag', name: 'New Tag', color: '#FF0000' }
       ];
-      
+
       const currentContact = { ...TEST_CONTACTS.ENGAGED_CLIENT, tags: [] };
       const existingTags = [TEST_TAGS.VIP_CLIENT];
       const createdTag = { id: 'created-tag-id', name: 'New Tag', color: '#FF0000' };
@@ -300,7 +300,7 @@ describe('ContactService', () => {
       expect(result.avatarUrl).toMatch(/^\/uploads\/contact-photos\/.*\.webp$/);
       expect(result.photoId).toBe('photo-123');
       expect(result.fileSize).toBe(1024);
-      
+
       expect(mockSharp.resize).toHaveBeenCalledWith(400, 400, { fit: 'cover', position: 'center' });
       expect(mockSharp.webp).toHaveBeenCalledWith({ quality: 85 });
       expect(mockStorage.contacts.createPhoto).toHaveBeenCalled();
@@ -313,7 +313,7 @@ describe('ContactService', () => {
       // Arrange
       const contactId = 'non-existent';
       const file = getTestData(TEST_FILE_UPLOADS.VALID_IMAGE);
-      
+
       mockStorage.contacts.getById.mockResolvedValue(undefined);
 
       // Act
@@ -331,7 +331,7 @@ describe('ContactService', () => {
       const contactId = TEST_CONTACTS.NEW_CLIENT.id;
       const file = getTestData(TEST_FILE_UPLOADS.VALID_IMAGE);
       const contact = { ...TEST_CONTACTS.NEW_CLIENT, tags: [] };
-      
+
       mockStorage.contacts.getById.mockResolvedValue(contact as any);
       mockSafeFileOperation
         .mockReturnValueOnce(true) // temp file cleanup
@@ -476,7 +476,7 @@ describe('ContactService', () => {
     it('should handle large file uploads within limits', async () => {
       // Arrange
       const contactId = TEST_CONTACTS.NEW_CLIENT.id;
-      const largeFile = { 
+      const largeFile = {
         ...getTestData(TEST_FILE_UPLOADS.LARGE_IMAGE),
         size: 1024 * 1024 * 5 // 5MB file
       };

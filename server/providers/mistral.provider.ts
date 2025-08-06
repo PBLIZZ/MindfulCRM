@@ -52,9 +52,9 @@ class MistralService {
           model,
           messages: messages.map(msg => ({
             role: msg.role,
-            content: typeof msg.content === 'string' ? msg.content : 
-              Array.isArray(msg.content) ? 
-                msg.content.filter(part => part.type === 'text').map(part => part.text).join(' ') : 
+            content: typeof msg.content === 'string' ? msg.content :
+              Array.isArray(msg.content) ?
+                msg.content.filter(part => part.type === 'text').map(part => part.text).join(' ') :
                 ''
           })),
           response_format: isJson ? { type: 'json_object' } : undefined,

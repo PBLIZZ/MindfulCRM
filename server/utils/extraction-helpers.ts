@@ -52,9 +52,9 @@ export function validateBoolean(data: unknown, fallback: boolean = false): boole
  * Validates number field from LLM response with fallback and bounds
  */
 export function validateNumber(
-  data: unknown, 
-  fallback: number = 0, 
-  min?: number, 
+  data: unknown,
+  fallback: number = 0,
+  min?: number,
   max?: number
 ): number {
   let num = typeof data === 'number' ? data : fallback;
@@ -67,8 +67,8 @@ export function validateNumber(
  * Creates a standardized error response for failed extractions
  */
 export function createErrorResponse<T>(
-  defaultResponse: T, 
-  error: unknown, 
+  defaultResponse: T,
+  error: unknown,
   context: string
 ): T {
   console.error(`${context} extraction failed:`, error);
@@ -103,7 +103,7 @@ export function generateEventHash(eventData: {
     startTime: eventData.startTime?.toISOString(),
     endTime: eventData.endTime?.toISOString(),
   });
-  
+
   // Simple hash function - in production, consider using crypto.createHash
   let hash = 0;
   for (let i = 0; i < hashData.length; i++) {

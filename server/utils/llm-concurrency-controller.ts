@@ -1,9 +1,9 @@
 import { EventEmitter } from 'events';
-import type { 
-  QueuedRequest, 
-  ConcurrencyStats, 
+import type {
+  QueuedRequest,
+  ConcurrencyStats,
   LLMRequestPriority,
-  LLMBatchOptions 
+  LLMBatchOptions
 } from '../types/service-contracts.js';
 
 export class LLMConcurrencyController extends EventEmitter {
@@ -79,7 +79,7 @@ export class LLMConcurrencyController extends EventEmitter {
     // Process in smaller batches to avoid overwhelming the system
     for (let i = 0; i < operations.length; i += batchSize) {
       const batch = operations.slice(i, i + batchSize);
-      
+
       // Execute batch with Promise.allSettled to handle failures gracefully
       const batchPromises = batch.map(op =>
         this.execute(op.operation, {
@@ -91,15 +91,15 @@ export class LLMConcurrencyController extends EventEmitter {
       );
 
       const batchResults = await Promise.allSettled(batchPromises);
-      
+
       // Process results
       for (const result of batchResults) {
         if (result.status === 'fulfilled') {
           results.push({ success: true, result: result.value });
         } else {
-          results.push({ 
-            success: false, 
-            error: result.reason instanceof Error ? result.reason.message : 'Unknown error' 
+          results.push({
+            success: false,
+            error: result.reason instanceof Error ? result.reason.message : 'Unknown error'
           });
         }
       }
@@ -153,10 +153,10 @@ export class LLMConcurrencyController extends EventEmitter {
     if (newLimit < 1 || newLimit > 50) {
       throw new Error('Concurrency limit must be between 1 and 50');
     }
-    
+
     this.maxConcurrentRequests = newLimit;
     this.emit('concurrencyChanged', { newLimit, currentActive: this.activeRequests.size });
-    
+
     // Process queue if we increased the limit
     if (newLimit > this.activeRequests.size) {
       void this.processQueue();
@@ -169,10 +169,10 @@ export class LLMConcurrencyController extends EventEmitter {
     const insertIndex = this.requestQueue.findIndex(
       r => priorityOrder[r.priority] > priorityOrder[request.priority]
     );
-    
+
     // Cast to unknown to satisfy type constraints
     const unknownRequest = request as QueuedRequest<unknown>;
-    
+
     if (insertIndex === -1) {
       this.requestQueue.push(unknownRequest);
     } else {
@@ -214,44 +214,44 @@ export class LLMConcurrencyController extends EventEmitter {
 
   private async processRequest<T>(request: QueuedRequest<T>): Promise<void> {
     const startTime = Date.now();
-    
+
     try {
       this.emit('requestStarted', { id: request.id, model: request.model, userId: request.userId });
-      
+
       const result = await request.operation();
       const processingTime = Date.now() - startTime;
-      
+
       // Update processing time statistics
       this.processingTimes.push(processingTime);
       if (this.processingTimes.length > 100) {
         this.processingTimes.shift(); // Keep only last 100 times
       }
       this.stats.avgProcessingTime = this.processingTimes.reduce((a, b) => a + b, 0) / this.processingTimes.length;
-      
+
       this.stats.completed++;
       request.resolve(result);
-      
-      this.emit('requestCompleted', { 
-        id: request.id, 
-        processingTime, 
+
+      this.emit('requestCompleted', {
+        id: request.id,
+        processingTime,
         model: request.model,
-        userId: request.userId 
+        userId: request.userId
       });
-      
+
     } catch (error) {
       this.stats.failed++;
       request.reject(error);
-      
-      this.emit('requestFailed', { 
-        id: request.id, 
+
+      this.emit('requestFailed', {
+        id: request.id,
         error: error instanceof Error ? error.message : 'Unknown error',
         model: request.model,
-        userId: request.userId 
+        userId: request.userId
       });
     } finally {
       this.activeRequests.delete(request.id);
       this.stats.active = this.activeRequests.size;
-      
+
       // Continue processing queue
       setTimeout(() => this.processQueue(), 0);
     }

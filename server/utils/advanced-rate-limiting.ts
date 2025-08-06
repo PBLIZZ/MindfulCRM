@@ -37,7 +37,7 @@ export class AdvancedRateLimiter {
 
     // Check primary model rate limit
     const primaryCheck = await rateLimiter.checkLimit(userId, primaryModel);
-    
+
     if (primaryCheck.allowed) {
       return {
         model: primaryModel,
@@ -46,7 +46,7 @@ export class AdvancedRateLimiter {
     }
 
     const waitTime = primaryCheck.resetTime ? primaryCheck.resetTime - Date.now() : maxWaitTime;
-    
+
     console.log(
       `Rate limit exceeded for ${primaryModel}. ${primaryCheck.suggestion}. Wait time: ${waitTime}ms`
     );
@@ -54,7 +54,7 @@ export class AdvancedRateLimiter {
     // Try fallback model if available
     if (fallbackModel && !primaryModel.includes('free')) {
       console.log(`Attempting fallback to ${fallbackModel}`);
-      
+
       const fallbackCheck = await rateLimiter.checkLimit(userId, fallbackModel);
       if (fallbackCheck.allowed) {
         console.log(`Successfully switched to fallback model: ${fallbackModel}`);
@@ -67,12 +67,12 @@ export class AdvancedRateLimiter {
 
     // If no fallback available or fallback also rate limited, decide whether to wait
     const shouldWait = waitTime <= maxWaitTime;
-    
+
     if (shouldWait) {
       console.log(`Waiting ${waitTime}ms for rate limit reset`);
       await this.sleep(waitTime);
       this.rateLimitDelayMs += waitTime;
-      
+
       return {
         model: primaryModel,
         shouldProceed: true,
@@ -96,20 +96,20 @@ export class AdvancedRateLimiter {
     maxBackoffTime: number = 30000
   ): Promise<number> {
     const errorMessage = error.message;
-    
+
     if (errorMessage.includes('rate') || errorMessage.includes('429')) {
       const attempts = this.backoffAttempts.get(context) ?? 0;
       const backoffTime = Math.min(1000 * Math.pow(2, attempts % 5), maxBackoffTime);
-      
+
       console.log(`Rate limit error detected for ${context}, backing off for ${backoffTime}ms`);
-      
+
       await this.sleep(backoffTime);
       this.rateLimitDelayMs += backoffTime;
       this.backoffAttempts.set(context, attempts + 1);
-      
+
       return backoffTime;
     }
-    
+
     return 0;
   }
 

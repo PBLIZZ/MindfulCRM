@@ -1,10 +1,10 @@
 import { db } from '../../server/db.js';
-import { 
-  users, 
-  contacts, 
-  tags, 
-  contactTags, 
-  interactions, 
+import {
+  users,
+  contacts,
+  tags,
+  contactTags,
+  interactions,
   calendarEvents,
   tasks,
   goals,
@@ -21,11 +21,11 @@ export async function setupTestDatabase(): Promise<void> {
   // In a real implementation, you might want to create a separate test database
   // For now, we'll ensure the existing database is ready for testing
   console.log('🔧 Setting up test database...');
-  
+
   // Verify all tables exist (this will throw if schema is broken)
   await db.select({ count: 1 }).from(users).limit(1);
   await db.select({ count: 1 }).from(contacts).limit(1);
-  
+
   console.log('✅ Test database setup complete');
 }
 
@@ -46,7 +46,7 @@ export async function cleanupTestDatabase(): Promise<void> {
     await db.delete(contacts);
     await db.delete(tags);
     await db.delete(users);
-    
+
   } catch (error) {
     console.error('Error cleaning up test database:', error);
     throw error;
@@ -75,7 +75,7 @@ export async function createTestUser(overrides: Partial<TestUser> = {}): Promise
  * Create a test contact for a user
  */
 export async function createTestContact(
-  userId: string, 
+  userId: string,
   overrides: Partial<TestContact> = {}
 ): Promise<TestContact> {
   const contactData = {
@@ -182,7 +182,7 @@ export async function seedTestData(): Promise<TestDataSeed> {
       content: `Test interaction with ${contact.name}`,
       createdAt: new Date()
     };
-    
+
     await db.insert(interactions).values({
       ...interactionData,
       userId: user.id,
@@ -191,7 +191,7 @@ export async function seedTestData(): Promise<TestDataSeed> {
       sentiment: contactData.sentiment,
       updatedAt: new Date()
     });
-    
+
     testInteractions.push(interactionData);
   }
 

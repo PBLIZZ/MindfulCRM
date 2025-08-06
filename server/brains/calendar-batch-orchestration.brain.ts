@@ -99,7 +99,6 @@ export class CalendarBatchOrchestrationBrain {
     // Extract successful results and handle failures
     const successfulResults: CalendarEventAnalysis[] = [];
     const failedEvents: string[] = [];
-    const _totalCost = 0;
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
@@ -161,7 +160,7 @@ export class CalendarBatchOrchestrationBrain {
       // If not relevant, mark as processed and skip extraction
       if (!filterResult.isRelevant) {
         console.log(`Event ${event.id} filtered as not relevant: ${filterResult.relevanceReason}`);
-        
+
         const analysis: CalendarEventAnalysis = {
           ...defaultIrrelevantAnalysis,
           relevanceReason: filterResult.relevanceReason,
@@ -278,7 +277,7 @@ const inputTokens = this.estimateTokens({...event, contacts});
       startTime: eventData.startTime?.toISOString(),
       endTime: eventData.endTime?.toISOString(),
     });
-    
+
     // Simple hash function - in production, consider using crypto.createHash
     let hash = 0;
     for (let i = 0; i < hashData.length; i++) {

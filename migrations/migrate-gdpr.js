@@ -22,7 +22,7 @@ async function runMigration() {
 
   try {
     const client = await pool.connect();
-    
+
     // Read the migration SQL file
     const migrationSQL = fs.readFileSync(
       path.join(__dirname, 'migrations', 'add-gdpr-consent-columns.sql'),
@@ -30,12 +30,12 @@ async function runMigration() {
     );
 
     console.log('Running GDPR consent columns migration...');
-    
+
     // Execute the migration
     await client.query(migrationSQL);
-    
+
     console.log('✅ Migration completed successfully!');
-    
+
     client.release();
   } catch (error) {
     console.error('❌ Migration failed:', error);

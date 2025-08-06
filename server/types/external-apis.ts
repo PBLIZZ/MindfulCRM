@@ -1,6 +1,6 @@
 /**
  * External API Type Definitions
- * 
+ *
  * This file contains type definitions for data shapes from third-party APIs
  * and sanitized data transfer objects (DTOs) used for API communication.
  */

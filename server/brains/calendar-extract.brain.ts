@@ -4,13 +4,13 @@ import type { ContactData } from '../types/external-apis.js';
 import type { CalendarEventAnalysis } from '../types/service-contracts.js';
 import { sanitizeForLLM } from '../utils/sanitizers.js';
 import { extractEmailsFromAttendees } from '../utils/relevance-patterns.js';
-import { 
-  extractJSON, 
-  validateString, 
-  validateBoolean, 
-  validateStringArray, 
+import {
+  extractJSON,
+  validateString,
+  validateBoolean,
+  validateStringArray,
   validateNumber,
-  createErrorResponse 
+  createErrorResponse
 } from '../utils/extraction-helpers.js';
 
 // Generic interface for LLM provider
@@ -34,7 +34,7 @@ export class CalendarExtractBrain {
     const { event, contacts } = input;
     const knownContactEmails = new Set(contacts.map(c => c.email.toLowerCase()));
     const attendeeEmails = Array.isArray(event.attendees) ? extractEmailsFromAttendees(event.attendees) : [];
-    
+
     // Find which attendees are known contacts
     const clientEmails = attendeeEmails.filter(email => knownContactEmails.has(email));
     const hasKnownContacts = clientEmails.length > 0;
@@ -139,14 +139,14 @@ IMPORTANT:
         notes: validateString(result.notes, ''),
         confidence: validateNumber(result.confidence, 0.5, 0, 1),
         suggestedAction: 'process' as const,
-        
+
         // Additional fields from extraction
         businessSignificance: ['high', 'medium', 'low'].includes(result.businessSignificance as string) ?
           result.businessSignificance as 'high' | 'medium' | 'low' : 'medium',
         clientStage: ['new', 'active', 'follow_up', 'maintenance', 'unknown'].includes(result.clientStage as string) ?
           result.clientStage as 'new' | 'active' | 'follow_up' | 'maintenance' | 'unknown' : 'unknown',
         schedulingNotes: validateString(result.schedulingNotes, ''),
-        
+
         // Metadata
         processedAt: new Date().toISOString(),
         llmModel: model,

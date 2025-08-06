@@ -121,7 +121,7 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
   const onSubmit = (data: ContactFormData) => {
     // Separate standard fields from extracted fields
     const { company, jobTitle, website, linkedinUrl, address, ...standardFields } = data;
-    
+
     // Build extracted fields object
     const extractedFields: ExtractedFields = {};
     if (company) extractedFields.company = company;
@@ -129,20 +129,20 @@ export default function AddContactDialog({ open, onOpenChange }: AddContactDialo
     if (website) extractedFields.website = website;
     if (linkedinUrl) extractedFields.linkedinUrl = linkedinUrl;
     if (address) extractedFields.address = address;
-    
+
     // Clean up empty strings from standard fields
     const cleanData = Object.fromEntries(
       Object.entries(standardFields).filter(([, value]) => value !== '' && value !== null && value !== undefined)
     ) as Omit<ContactFormData, 'company' | 'jobTitle' | 'website' | 'linkedinUrl' | 'address'>;
-    
+
     // Create final API data object
     const apiData: ContactApiData = { ...cleanData };
-    
+
     // Add extracted fields if not empty
     if (Object.keys(extractedFields).length > 0) {
       apiData.extractedFields = extractedFields;
     }
-    
+
     createContact.mutate(apiData);
   };
 

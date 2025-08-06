@@ -85,13 +85,13 @@ export function TagSelectionDialog({
         },
         body: JSON.stringify(tagData),
       });
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Failed to create tag' })) as TagErrorResponse;
         const errorMessage = errorData.message ?? 'Failed to create tag';
         throw new Error(errorMessage);
       }
-      
+
       return response.json() as Promise<Tag>;
     },
     onSuccess: async (newTag: Tag) => {
@@ -244,7 +244,7 @@ export function TagSelectionDialog({
                     />
                   ))}
                 </div>
-                
+
                 {/* Preview */}
                 {newTagName && (
                   <div className="pt-2">
@@ -252,10 +252,10 @@ export function TagSelectionDialog({
                     <div className="mt-1">
                       <Badge
                         variant="secondary"
-                        style={{ 
-                          backgroundColor: selectedColor + '20', 
-                          color: selectedColor, 
-                          borderColor: selectedColor 
+                        style={{
+                          backgroundColor: selectedColor + '20',
+                          color: selectedColor,
+                          borderColor: selectedColor
                         }}
                       >
                         {newTagName}
@@ -275,7 +275,7 @@ export function TagSelectionDialog({
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
-              <Button 
+              <Button
                 onClick={handleCreateNewTag}
                 disabled={createTagMutation.isPending || !newTagName.trim()}
               >

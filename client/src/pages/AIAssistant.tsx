@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 // Speech Recognition types
-type SpeechRecognitionEvent = Event & { 
+type SpeechRecognitionEvent = Event & {
   results: {
     [index: number]: {
       [index: number]: {
@@ -172,7 +172,7 @@ export default function AIAssistant() {
       webkitSpeechRecognition?: unknown;
     };
     const SpeechRecognition = windowWithSpeech.SpeechRecognition ?? windowWithSpeech.webkitSpeechRecognition;
-    
+
     if (SpeechRecognition) {
       const recognition = new (SpeechRecognition as new () => {
         continuous: boolean;
@@ -184,7 +184,7 @@ export default function AIAssistant() {
         onend: (() => void) | null;
         start: () => void;
       })();
-      
+
       recognition.continuous = false;
       recognition.interimResults = false;
       recognition.lang = 'en-US';
@@ -379,10 +379,10 @@ export default function AIAssistant() {
                       const startTime = new Date(event.startTime);
                       const isToday = startTime.toDateString() === new Date().toDateString();
                       const isSoon = startTime.getTime() - Date.now() < 2 * 60 * 60 * 1000; // Within 2 hours
-                      
+
                       return (
                         <div key={event.id} className={`border rounded-lg p-3 ${
-                          isSoon ? 'border-orange-200 bg-orange-50 dark:bg-orange-950' : 
+                          isSoon ? 'border-orange-200 bg-orange-50 dark:bg-orange-950' :
                           isToday ? 'border-teal-200 bg-teal-50 dark:bg-teal-950' : ''
                         }`}>
                           <div className="flex items-start justify-between mb-2">

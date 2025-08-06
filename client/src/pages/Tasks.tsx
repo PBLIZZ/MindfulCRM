@@ -461,8 +461,8 @@ function TasksTab({
                           </div>
                         )}
 
-                        {task.assignedContactIds && 
-                         Array.isArray(task.assignedContactIds) && 
+                        {task.assignedContactIds &&
+                         Array.isArray(task.assignedContactIds) &&
                          task.assignedContactIds.length > 0 ? (
                           <div className='flex items-center gap-1'>
                             <User className='h-3 w-3' />

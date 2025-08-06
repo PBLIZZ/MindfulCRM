@@ -17,7 +17,7 @@ interface ConsentVerificationProps {
 
 const ConsentVerification: React.FC<ConsentVerificationProps> = ({ profile }) => {
   const { toast } = useToast();
-  
+
   if (!profile) {
     return (
       <div className="p-3 border rounded bg-gray-50">
@@ -50,13 +50,13 @@ const ConsentVerification: React.FC<ConsentVerificationProps> = ({ profile }) =>
         <div className="flex-1">
           <h3 className="font-semibold">GDPR Consent Status</h3>
           <p className="text-sm">
-            {hasConsent 
+            {hasConsent
               ? 'You have consented to contact profile picture enrichment'
               : 'Consent required for contact profile picture enrichment'
             }
           </p>
           {!hasConsent && (
-            <button 
+            <button
               onClick={handleGrantConsent}
               className="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
             >

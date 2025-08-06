@@ -62,12 +62,12 @@ const PhotoEnrichment = () => {
       ) : (
         <>
           {profile && <ConsentVerification profile={profile} />}
-          <BatchEnrichmentControls 
+          <BatchEnrichmentControls
             stats={stats ? {
               totalContacts: stats.totalContacts,
               contactsWithPhotos: stats.enrichedContacts,
               contactsWithoutPhotos: []  // This would need to be fetched separately
-            } : null} 
+            } : null}
             startBatchEnrichment={async () => {
               const result = await startBatchEnrichment([]);
               return {
@@ -75,7 +75,7 @@ const PhotoEnrichment = () => {
                 failed: 0, // BatchEnrichmentResponse doesn't track failures
                 duration: 'N/A' // BatchEnrichmentResponse doesn't track duration
               };
-            }} 
+            }}
           />
         </>
       )}
@@ -84,4 +84,3 @@ const PhotoEnrichment = () => {
 };
 
 export default PhotoEnrichment;
-

@@ -35,7 +35,7 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    
+
     /* Test against mobile viewports. */
     {
       name: 'Mobile Chrome',
@@ -64,11 +64,11 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
-  
+
   /* Global setup and teardown */
   globalSetup: require.resolve('./tests/e2e/global-setup.ts'),
   globalTeardown: require.resolve('./tests/e2e/global-teardown.ts'),
-  
+
   /* Use authentication state */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -82,7 +82,7 @@ export default defineConfig({
     /* Use saved authentication state */
     storageState: 'tests/e2e/auth-state.json'
   },
-  
+
   /* Test timeout */
   timeout: 30 * 1000,
   expect: {

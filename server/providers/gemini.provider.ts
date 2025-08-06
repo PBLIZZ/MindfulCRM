@@ -55,7 +55,7 @@ class GeminiService {
           return ''; // Handle null/undefined content
         }
       }).filter(part => part.length > 0); // Remove empty parts
-      
+
       // Note: Gemini doesn't support JSON mode like OpenAI, so we ignore the isJson parameter
       if (isJson) {
         console.warn('Gemini provider does not support JSON mode. Ignoring isJson parameter.');

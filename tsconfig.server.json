@@ -11,7 +11,9 @@
   "include": [
     "server",
     "shared",
-    "types"
+    "types",
+    "scripts",
+    "vite.config.ts"
   ],
   "exclude": [
     "node_modules",

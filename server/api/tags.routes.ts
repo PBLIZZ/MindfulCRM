@@ -9,7 +9,7 @@ const tagsRouter = Router();
 tagsRouter.use(requireAuth);
 
 // GET all tags
-tagsRouter.get('/', async (req, res) => {
+tagsRouter.get('/', async (_req, res) => {
   try {
     const tags = await tagService.getAllTags();
     res.json(tags);
@@ -25,12 +25,12 @@ tagsRouter.post('/', async (req, res) => {
     // Validate request body
     const bodyResult = createTagSchema.safeParse(req.body);
     if (!bodyResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid tag data', 
-        details: bodyResult.error.errors 
+      return res.status(400).json({
+        error: 'Invalid tag data',
+        details: bodyResult.error.errors
       });
     }
-    
+
     const tag = await tagService.createTag(bodyResult.data);
     res.status(201).json(tag);
   } catch (error: unknown) {

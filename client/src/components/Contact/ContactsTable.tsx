@@ -6,16 +6,16 @@ import { Button } from "@/components/ui/button.js"
 import { Input } from "@/components/ui/input.js"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.js"
 import { Checkbox } from "@/components/ui/checkbox.js"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuCheckboxItem
 } from "@/components/ui/dropdown-menu.js"
-import { 
+import {
   Table,
   TableBody,
   TableCell,
@@ -23,14 +23,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table.js"
-import { 
-  Mail, 
-  Phone, 
-   
-  MessageSquare, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Mail,
+  Phone,
+
+  MessageSquare,
+  Eye,
+  Edit,
+  Trash2,
   Search,
   Filter,
   Download,
@@ -173,10 +173,10 @@ const savePreferences = (preferences: Partial<TablePreferences>) => {
   }
 }
 
-export function ContactsTable({ 
-  contacts, 
-  onSelectContact, 
-  onEditContact, 
+export function ContactsTable({
+  contacts,
+  onSelectContact,
+  onEditContact,
   onDeleteContact,
   onBulkAction,
   // _onExportData,
@@ -394,10 +394,10 @@ export function ContactsTable({
           <div className="flex items-center space-x-2">
             <MessageSquare className="h-3 w-3 text-muted-foreground" />
             <span className="text-sm">
-              {new Date(lastContact).toLocaleDateString('en-GB', { 
-                day: '2-digit', 
-                month: 'short', 
-                year: '2-digit' 
+              {new Date(lastContact).toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: '2-digit'
               }).replace(/\s/g, '-').toUpperCase()}
             </span>
           </div>
@@ -418,9 +418,9 @@ export function ContactsTable({
         return (
           <div className="flex items-center gap-1 flex-wrap">
             {displayTags.map((tag) => (
-              <Badge 
-                key={tag.id} 
-                variant="secondary" 
+              <Badge
+                key={tag.id}
+                variant="secondary"
                 className="text-xs cursor-pointer hover:opacity-80"
                 style={{ backgroundColor: tag.color + '20', color: tag.color, borderColor: tag.color }}
                 onClick={(e) => {
@@ -512,7 +512,7 @@ export function ContactsTable({
             >
               <Eye className="h-4 w-4 text-sky-500" />
             </Button>
-            
+
             {onEditContact && (
               <Button
                 variant="ghost"
@@ -527,7 +527,7 @@ export function ContactsTable({
                 <Edit className="h-4 w-4 text-green-500" />
               </Button>
             )}
-            
+
             {onDeleteContact && (
               <Button
                 variant="ghost"
@@ -555,13 +555,13 @@ export function ContactsTable({
         contact.name.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ||
         (contact.email?.toLowerCase().includes(debouncedGlobalFilter.toLowerCase()) ??
         contact.phone?.includes(debouncedGlobalFilter) ??
-        Object.values(contact.extractedFields ?? {}).some(value => 
+        Object.values(contact.extractedFields ?? {}).some(value =>
           String(value).toLowerCase().includes(debouncedGlobalFilter.toLowerCase())
         ))
-      
+
       // Lifecycle filter
       const lifecycleMatch = lifecycleFilter === 'all' || contact.lifecycleStage === lifecycleFilter
-      
+
       return searchMatch && lifecycleMatch
     })
   }, [contacts, debouncedGlobalFilter, lifecycleFilter])
@@ -593,7 +593,7 @@ export function ContactsTable({
     manualFiltering: false,
   })
 
-  
+
   const selectedContactIds = Object.keys(rowSelection).filter(id => rowSelection[id])
 
   const resetPreferences = () => {
@@ -816,7 +816,7 @@ export function ContactsTable({
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="flex items-center space-x-6 lg:space-x-8">
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
@@ -861,7 +861,7 @@ export function ContactsTable({
             </Button>
           </div>
         </div>
-        
+
         <div className="flex-1 text-sm text-muted-foreground">
           {table.getFilteredSelectedRowModel().rows.length} of{" "}
           {table.getFilteredRowModel().rows.length} row(s) selected.

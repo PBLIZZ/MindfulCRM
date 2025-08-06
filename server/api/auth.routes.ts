@@ -24,22 +24,22 @@ authRouter.get('/google', passport.authenticate('google', { scope: ['profile', '
 authRouter.get(
   '/google/callback',
   (req: Request, res: Response, _next: (error?: Error) => void) => {
-    const authenticate = passport.authenticate('google', { 
-      failureRedirect: '/login?error=auth_failed', 
-      session: false 
+    const authenticate = passport.authenticate('google', {
+      failureRedirect: '/login?error=auth_failed',
+      session: false
     }) as (req: Request, res: Response, next: (err?: Error) => void) => void;
-    
+
     authenticate(req, res, (err?: Error) => {
       if (err) {
         console.error('OAuth callback error:', err);
         return res.redirect('/login?error=oauth_error');
       }
-      
+
       if (!isAuthenticatedUser(req.user)) {
         console.error('User not authenticated after OAuth');
         return res.redirect('/login?error=user_not_found');
       }
-      
+
       try {
         setAuthCookie(res, req.user.id);
         res.redirect('/');
@@ -55,7 +55,7 @@ authRouter.get(
 authRouter.post(
   '/logout',
   csrfProtection,
-  (req: Request, res: Response): void => {
+  (_req: Request, res: Response): void => {
     clearAuthCookie(res);
     res.json({ success: true });
   }

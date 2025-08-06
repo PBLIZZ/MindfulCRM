@@ -27,15 +27,15 @@ test.describe('Contact Management E2E Tests', () => {
 
   test.beforeEach(async () => {
     page = await context.newPage();
-    
+
     // Mock external API calls to prevent real API usage during E2E tests
     await page.route('**/api/ai/**', route => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ 
-          success: true, 
-          message: 'Mocked AI response' 
+        body: JSON.stringify({
+          success: true,
+          message: 'Mocked AI response'
         })
       });
     });
@@ -44,9 +44,9 @@ test.describe('Contact Management E2E Tests', () => {
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ 
-          success: true, 
-          data: [] 
+        body: JSON.stringify({
+          success: true,
+          data: []
         })
       });
     });
@@ -167,7 +167,7 @@ test.describe('Contact Management E2E Tests', () => {
       await page.locator('[data-testid="contact-name-input"]').fill('John Doe');
       await page.locator('[data-testid="contact-email-input"]').fill('john.doe@example.com');
       await page.locator('[data-testid="contact-phone-input"]').fill('+1-555-0199');
-      
+
       // Select lifecycle stage
       await page.locator('[data-testid="lifecycle-stage-select"]').click();
       await page.locator('[data-testid="lifecycle-option-curious"]').click();
@@ -398,7 +398,7 @@ test.describe('Contact Management E2E Tests', () => {
 
       // Verify upload success
       await expect(page.locator('[data-testid="upload-success"]')).toBeVisible();
-      
+
       // Verify photo appears
       const avatar = page.locator('[data-testid="contact-avatar"]');
       await expect(avatar).toBeVisible();
@@ -521,11 +521,11 @@ test.describe('Contact Management E2E Tests', () => {
       await expect(page.locator('[data-testid="ai-insights"]')).toBeVisible();
       await expect(page.locator('[data-testid="sentiment-score"]')).toContainText('4.2');
       await expect(page.locator('[data-testid="engagement-level"]')).toContainText('high');
-      
+
       // Verify insights list
       const insightItems = page.locator('[data-testid="insight-item"]');
       await expect(insightItems).toHaveCount(3);
-      
+
       // Verify recommendations
       const recommendationItems = page.locator('[data-testid="recommendation-item"]');
       await expect(recommendationItems).toHaveCount(3);
@@ -595,7 +595,7 @@ test.describe('Contact Management E2E Tests', () => {
 
       // Check for proper heading structure
       await expect(page.locator('h1')).toBeVisible();
-      
+
       // Check for proper form labels
       await page.locator('[data-testid="add-contact-button"]').click();
       await expect(page.locator('label[for="contact-name"]')).toBeVisible();

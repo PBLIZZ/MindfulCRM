@@ -27,10 +27,10 @@ export function logError(context: string, error: unknown): void {
  */
 export function createErrorResponse(message: string, error: unknown, includeDetails = false) {
   const response: { error: string; details?: string } = { error: message };
-  
+
   if (includeDetails && process.env.NODE_ENV === 'development') {
     response.details = getErrorMessage(error);
   }
-  
+
   return response;
 }

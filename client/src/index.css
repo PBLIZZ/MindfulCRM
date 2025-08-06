@@ -126,13 +126,13 @@
 @utility border-teal-900 { border-color: var(--teal-900); }
 
 @keyframes voice-pulse {
-  0%, 100% { 
-    transform: scale(1); 
-    opacity: 1; 
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
   }
-  50% { 
-    transform: scale(1.1); 
-    opacity: 0.8; 
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
   }
 }
 
@@ -190,7 +190,3 @@
 @utility text-sidebar-accent-foreground { color: hsl(var(--sidebar-accent-foreground)); }
 @utility border-sidebar-border { border-color: hsl(var(--sidebar-border)); }
 @utility ring-sidebar-ring { --tw-ring-color: hsl(var(--sidebar-ring)); }
-
-
-
-

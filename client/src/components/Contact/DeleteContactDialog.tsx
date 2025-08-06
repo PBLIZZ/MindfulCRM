@@ -14,11 +14,11 @@ import { Card, CardContent } from '@/components/ui/card.js'
 import { Badge } from '@/components/ui/badge.js'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.js'
 import { Separator } from '@/components/ui/separator.js'
-import { 
-  Trash2, 
-  AlertTriangle, 
-  FileText, 
-  MessageSquare, 
+import {
+  Trash2,
+  AlertTriangle,
+  FileText,
+  MessageSquare,
   Calendar,
   Target,
   Loader2
@@ -82,10 +82,10 @@ export function DeleteContactDialog({
         title: 'Contact deleted',
         description: 'The contact and all associated data have been permanently deleted.',
       })
-      
+
       void queryClient.invalidateQueries({ queryKey: ['/api/contacts'] })
       void queryClient.invalidateQueries({ queryKey: ['/api/dashboard/stats'] })
-      
+
       onOpenChange(false)
       setCascadeInfo(null)
     },
@@ -153,7 +153,7 @@ export function DeleteContactDialog({
 
   if (!contact) return null
 
-  const totalRelatedItems = cascadeInfo 
+  const totalRelatedItems = cascadeInfo
     ? (Object.values(cascadeInfo) as number[]).reduce((sum: number, count: number) => sum + count, 0)
     : 0
 
@@ -221,7 +221,7 @@ export function DeleteContactDialog({
                     <p className="text-sm text-muted-foreground mb-3">
                       This contact has {totalRelatedItems} related item{totalRelatedItems !== 1 ? 's' : ''} that will also be permanently deleted:
                     </p>
-                    
+
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {cascadeInfo.interactions > 0 && (
                         <div className="flex items-center gap-2">

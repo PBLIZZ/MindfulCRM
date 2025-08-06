@@ -31,15 +31,15 @@ export class ContactData {
 
     // Group results by contact to handle multiple tags per contact
     const contactMap = new Map<string, Contact & { tags: Tag[] }>();
-    
+
     result.forEach((row) => {
       const contact = row.contact;
       const tag = row.tag;
-      
+
       if (!contactMap.has(contact.id)) {
         contactMap.set(contact.id, { ...contact, tags: [] });
       }
-      
+
       if (tag) {
         contactMap.get(contact.id)!.tags.push(tag);
       }
@@ -66,7 +66,7 @@ export class ContactData {
     const contactTagsList: Tag[] = result
       .map(row => row.tag)
       .filter((tag): tag is Tag => tag !== null);
-    
+
     return { ...contact, tags: contactTagsList };
   }
 

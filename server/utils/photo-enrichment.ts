@@ -94,7 +94,7 @@ LinkedIn: ${contact.linkedinUrl ?? 'N/A'}
 Based on this information, provide the most likely social media profiles in this JSON format:
 {
   "linkedin": "https://linkedin.com/in/username or null",
-  "facebook": "https://facebook.com/username or null", 
+  "facebook": "https://facebook.com/username or null",
   "twitter": "https://twitter.com/username or null",
   "instagram": "https://instagram.com/username or null",
   "github": "https://github.com/username or null"

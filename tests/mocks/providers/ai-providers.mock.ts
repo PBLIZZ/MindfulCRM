@@ -43,7 +43,7 @@ export const mockOpenAI = {
       }) => {
         const lastMessage = messages[messages.length - 1];
         let content = MOCK_RESPONSES.CHAT_RESPONSE;
-        
+
         // Return appropriate mock responses based on message content
         if (typeof lastMessage.content === 'string') {
           if (lastMessage.content.includes('insight')) {
@@ -54,7 +54,7 @@ export const mockOpenAI = {
             content = MOCK_RESPONSES.CALENDAR_EXTRACT;
           }
         }
-        
+
         return {
           choices: [{
             message: { content },
@@ -74,20 +74,20 @@ export const mockOpenAI = {
 // Gemini Mock
 export const mockGeminiService = {
   generateCompletion: jest.fn().mockImplementation(async (
-    model: string, 
-    messages: ChatCompletionMessageParam[], 
+    model: string,
+    messages: ChatCompletionMessageParam[],
     isJson: boolean = false
   ) => {
     const lastMessage = messages[messages.length - 1];
     let content = MOCK_RESPONSES.CHAT_RESPONSE;
-    
+
     if (typeof lastMessage.content === 'string' && lastMessage.content.includes('insight')) {
       content = MOCK_RESPONSES.CONTACT_INSIGHTS;
     }
-    
+
     return content;
   }),
-  
+
   // Legacy methods for backward compatibility
   generateText: jest.fn().mockResolvedValue(MOCK_RESPONSES.CHAT_RESPONSE),
   generateJSON: jest.fn().mockResolvedValue(MOCK_RESPONSES.CONTACT_INSIGHTS)
@@ -103,7 +103,7 @@ export const mockOpenRouter = {
       }) => {
         const lastMessage = messages[messages.length - 1];
         let content = MOCK_RESPONSES.CHAT_RESPONSE;
-        
+
         if (typeof lastMessage.content === 'string') {
           if (lastMessage.content.includes('insight')) {
             content = MOCK_RESPONSES.CONTACT_INSIGHTS;
@@ -111,7 +111,7 @@ export const mockOpenRouter = {
             content = MOCK_RESPONSES.CALENDAR_EXTRACT;
           }
         }
-        
+
         return {
           choices: [{
             message: { content },
@@ -219,11 +219,11 @@ export const mockSharp = jest.fn().mockReturnValue({
 // Reset all mocks utility
 export function resetAllMocks(): void {
   jest.clearAllMocks();
-  
+
   // Reset specific mock implementations that might have been overridden
   mockOpenAI.chat.completions.create.mockImplementation(async () => ({
     choices: [{ message: { content: MOCK_RESPONSES.CHAT_RESPONSE } }]
   }));
-  
+
   mockGeminiService.generateCompletion.mockResolvedValue(MOCK_RESPONSES.CHAT_RESPONSE);
 }

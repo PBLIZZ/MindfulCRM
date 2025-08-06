@@ -28,34 +28,34 @@ export const csrfTokenManager = new CSRFTokenManager();
 // Rate Limiting Configurations - COMPLETELY DISABLED
 export const createRateLimit = (_windowMs: number, _max: number, _message?: string) => {
   // COMPLETELY BYPASS ALL RATE LIMITING
-  return (req: Request, res: Response, next: NextFunction) => next();
+  return (_req: Request, _res: Response, next: NextFunction) => next();
 };
 
 // Different rate limits for different endpoints - adjusted for development
 const isDevelopment = process.env.NODE_ENV === 'development';
 
 export const generalRateLimit = createRateLimit(
-  15 * 60 * 1000, 
+  15 * 60 * 1000,
   isDevelopment ? 999999 : 100
 ); // TEMPORARILY DISABLED - 999999 requests per 15 minutes in dev, 100 in prod
 
 export const authRateLimit = createRateLimit(
-  15 * 60 * 1000, 
+  15 * 60 * 1000,
   isDevelopment ? 50 : 5
 ); // 50 login attempts per 15 minutes in dev, 5 in prod
 
 export const apiRateLimit = createRateLimit(
-  1 * 60 * 1000, 
+  1 * 60 * 1000,
   isDevelopment ? 300 : 60
 ); // 300 API requests per minute in dev, 60 in prod
 
 export const uploadRateLimit = createRateLimit(
-  15 * 60 * 1000, 
+  15 * 60 * 1000,
   isDevelopment ? 50 : 10
 ); // 50 uploads per 15 minutes in dev, 10 in prod
 
 export const aiRateLimit = createRateLimit(
-  1 * 60 * 1000, 
+  1 * 60 * 1000,
   isDevelopment ? 100 : 20
 ); // 100 AI requests per minute in dev, 20 in prod
 
@@ -280,7 +280,7 @@ export const sanitizeResponse = <T>(data: T): T => {
   if (data === null) {
     return undefined as T;
   }
-  
+
   if (typeof data !== 'object' || data === undefined) {
     return data;
   }
@@ -299,7 +299,7 @@ export const sanitizeResponse = <T>(data: T): T => {
     ) {
       continue;
     }
-    
+
     // Convert null to undefined following DATA_DOCTRINE
     if (value === null) {
       sanitized[key] = undefined;

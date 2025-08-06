@@ -8,11 +8,11 @@ import { performance } from 'perf_hooks';
 import { ContactService } from '../../server/services/contact.service.js';
 import { ContactData } from '../../server/data/contact.data.js';
 import { storage } from '../../server/data/index.js';
-import { 
-  TEST_USERS, 
-  PERFORMANCE_DATA, 
+import {
+  TEST_USERS,
+  PERFORMANCE_DATA,
   createTestUser,
-  cleanupTestDatabase 
+  cleanupTestDatabase
 } from '../fixtures/test-data.js';
 import type { InsertContact } from '../../shared/schema.js';
 
@@ -24,7 +24,7 @@ describe('Contact Performance Tests', () => {
   beforeAll(async () => {
     contactService = new ContactService();
     contactData = new ContactData();
-    
+
     // Create test user for performance tests
     const testUser = await createTestUser({
       email: 'performance.test@mindfulcrm.com',
@@ -50,7 +50,7 @@ describe('Contact Performance Tests', () => {
         ...contact,
         userId: testUserId
       }));
-      
+
       // Batch insert for efficiency
       const startInsert = performance.now();
       await Promise.all(
@@ -67,10 +67,10 @@ describe('Contact Performance Tests', () => {
       // Assert
       const queryTime = endQuery - startQuery;
       console.log(`Queried 1000 contacts in ${queryTime.toFixed(2)}ms`);
-      
+
       expect(result).toHaveLength(1000);
       expect(queryTime).toBeLessThan(500); // Should complete in under 500ms
-      
+
       // Verify no N+1 query issues by checking tags are loaded
       result.forEach(contact => {
         expect(contact).toHaveProperty('tags');
@@ -120,7 +120,7 @@ describe('Contact Performance Tests', () => {
       // Assert
       const queryTime = endQuery - startQuery;
       console.log(`Retrieved contact details with 50 interactions in ${queryTime.toFixed(2)}ms`);
-      
+
       expect(result).not.toBeNull();
       expect(result!.interactions).toHaveLength(50);
       expect(queryTime).toBeLessThan(200); // Should complete in under 200ms
@@ -131,7 +131,7 @@ describe('Contact Performance Tests', () => {
     it('should handle bulk tag operations efficiently', async () => {
       // Arrange - Create 100 contacts
       const contacts = await Promise.all(
-        Array.from({ length: 100 }, (_, i) => 
+        Array.from({ length: 100 }, (_, i) =>
           storage.contacts.create({
             id: `bulk-contact-${i}`,
             userId: testUserId,
@@ -162,7 +162,7 @@ describe('Contact Performance Tests', () => {
       // Assert
       const bulkAddTime = endBulkAdd - startBulkAdd;
       console.log(`Bulk added tag to 100 contacts in ${bulkAddTime.toFixed(2)}ms`);
-      
+
       expect(result.success).toBe(true);
       expect(result.contactTags).toHaveLength(100);
       expect(bulkAddTime).toBeLessThan(300); // Should complete in under 300ms
@@ -178,7 +178,7 @@ describe('Contact Performance Tests', () => {
       // Assert
       const bulkRemoveTime = endBulkRemove - startBulkRemove;
       console.log(`Bulk removed tag from 100 contacts in ${bulkRemoveTime.toFixed(2)}ms`);
-      
+
       expect(removeResult).toBe(true);
       expect(bulkRemoveTime).toBeLessThan(200); // Should complete in under 200ms
     });
@@ -189,7 +189,7 @@ describe('Contact Performance Tests', () => {
       // Arrange - Create contacts with various lifecycle stages
       const lifecycleStages = ['curious', 'new_client', 'core_client', 'inactive'] as const;
       const contacts = await Promise.all(
-        Array.from({ length: 400 }, (_, i) => 
+        Array.from({ length: 400 }, (_, i) =>
           storage.contacts.create({
             id: `filter-contact-${i}`,
             userId: testUserId,
@@ -208,18 +208,18 @@ describe('Contact Performance Tests', () => {
       // Act - Query with filters (simulated by getting all and filtering)
       const startFilter = performance.now();
       const allContacts = await contactService.getContacts(testUserId);
-      
+
       // Simulate common filtering operations
       const coreClients = allContacts.filter(c => c.lifecycleStage === 'core_client');
       const highSentiment = allContacts.filter(c => c.sentiment >= 4);
       const consentedContacts = allContacts.filter(c => c.hasGdprConsent);
-      
+
       const endFilter = performance.now();
 
       // Assert
       const filterTime = endFilter - startFilter;
       console.log(`Filtered 400 contacts in ${filterTime.toFixed(2)}ms`);
-      
+
       expect(allContacts).toHaveLength(400);
       expect(coreClients.length).toBeGreaterThan(0);
       expect(highSentiment.length).toBeGreaterThan(0);
@@ -262,29 +262,29 @@ describe('Contact Performance Tests', () => {
       // Act - Query large dataset multiple times
       const iterations = 5;
       const queryTimes = [];
-      
+
       for (let i = 0; i < iterations; i++) {
         const startQuery = performance.now();
         const result = await contactService.getContacts(testUserId);
         const endQuery = performance.now();
-        
+
         queryTimes.push(endQuery - startQuery);
         expect(result).toHaveLength(2000);
       }
 
       // Get final memory usage
       const finalMemory = process.memoryUsage();
-      
+
       // Assert
       const avgQueryTime = queryTimes.reduce((sum, time) => sum + time, 0) / iterations;
       console.log(`Average query time for 2000 contacts: ${avgQueryTime.toFixed(2)}ms`);
-      
+
       const memoryIncrease = (finalMemory.heapUsed - initialMemory.heapUsed) / 1024 / 1024;
       console.log(`Memory increase: ${memoryIncrease.toFixed(2)}MB`);
-      
+
       expect(avgQueryTime).toBeLessThan(1000); // Should average under 1 second
       expect(memoryIncrease).toBeLessThan(100); // Should not increase memory by more than 100MB
-      
+
       // Performance should not degrade significantly across iterations
       const firstQuery = queryTimes[0];
       const lastQuery = queryTimes[queryTimes.length - 1];
@@ -297,7 +297,7 @@ describe('Contact Performance Tests', () => {
     it('should handle concurrent read operations efficiently', async () => {
       // Arrange - Create moderate dataset
       const contacts = await Promise.all(
-        Array.from({ length: 200 }, (_, i) => 
+        Array.from({ length: 200 }, (_, i) =>
           storage.contacts.create({
             id: `concurrent-contact-${i}`,
             userId: testUserId,
@@ -317,7 +317,7 @@ describe('Contact Performance Tests', () => {
       const concurrentReads = 10;
       const promises = Array.from({ length: concurrentReads }, async (_, i) => {
         const startTime = performance.now();
-        
+
         if (i % 3 === 0) {
           // List all contacts
           await contactService.getContacts(testUserId);
@@ -329,18 +329,18 @@ describe('Contact Performance Tests', () => {
           await contactService.getContacts(testUserId);
           await contactService.getContactDetails(contacts[i % contacts.length].id);
         }
-        
+
         return performance.now() - startTime;
       });
 
       const operationTimes = await Promise.all(promises);
-      
+
       // Assert
       const maxTime = Math.max(...operationTimes);
       const avgTime = operationTimes.reduce((sum, time) => sum + time, 0) / operationTimes.length;
-      
+
       console.log(`Concurrent operations - Max: ${maxTime.toFixed(2)}ms, Avg: ${avgTime.toFixed(2)}ms`);
-      
+
       expect(maxTime).toBeLessThan(2000); // No single operation should take more than 2 seconds
       expect(avgTime).toBeLessThan(500); // Average should be under 500ms
     });
@@ -348,7 +348,7 @@ describe('Contact Performance Tests', () => {
     it('should handle mixed read/write operations safely', async () => {
       // Arrange
       const contacts = await Promise.all(
-        Array.from({ length: 50 }, (_, i) => 
+        Array.from({ length: 50 }, (_, i) =>
           storage.contacts.create({
             id: `mixed-contact-${i}`,
             userId: testUserId,
@@ -366,7 +366,7 @@ describe('Contact Performance Tests', () => {
 
       // Act - Mix of read and write operations
       const operations = [];
-      
+
       for (let i = 0; i < 20; i++) {
         if (i % 4 === 0) {
           // Read operation
@@ -399,10 +399,10 @@ describe('Contact Performance Tests', () => {
       // Assert
       const totalTime = endTime - startTime;
       console.log(`Mixed operations completed in ${totalTime.toFixed(2)}ms`);
-      
+
       expect(results).toHaveLength(20);
       expect(totalTime).toBeLessThan(3000); // Should complete in under 3 seconds
-      
+
       // Verify no operations failed
       results.forEach(result => {
         expect(result).toBeDefined();
@@ -415,10 +415,10 @@ describe('Contact Performance Tests', () => {
     it('should demonstrate index usage for common queries', async () => {
       // This test would ideally use EXPLAIN ANALYZE in a real database
       // For now, we'll test query performance patterns that indicate proper indexing
-      
+
       // Arrange - Create contacts with varied data for index testing
       const contacts = await Promise.all(
-        Array.from({ length: 1000 }, (_, i) => 
+        Array.from({ length: 1000 }, (_, i) =>
           storage.contacts.create({
             id: `index-contact-${i}`,
             userId: testUserId,
@@ -439,10 +439,10 @@ describe('Contact Performance Tests', () => {
       const queries = [
         // Query by userId (should be very fast with index)
         () => contactService.getContacts(testUserId),
-        
+
         // Query by specific contact ID (should be instant with primary key)
         () => contactService.getContactDetails(contacts[0].id),
-        
+
         // Multiple contact lookups (should benefit from batching/caching)
         () => Promise.all(
           contacts.slice(0, 10).map(c => contactService.getContactDetails(c.id))
@@ -454,10 +454,10 @@ describe('Contact Performance Tests', () => {
         const startTime = performance.now();
         const result = await query();
         const endTime = performance.now();
-        
+
         const queryTime = endTime - startTime;
         console.log(`Index test query ${index + 1}: ${queryTime.toFixed(2)}ms`);
-        
+
         expect(result).toBeDefined();
         expect(queryTime).toBeLessThan(100); // Well-indexed queries should be very fast
       }

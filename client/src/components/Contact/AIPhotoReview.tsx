@@ -113,7 +113,7 @@ export function AIPhotoReview({ contact, open, onOpenChange }: AIPhotoReviewProp
       if (!contact) {
         throw new Error('No contact selected')
       }
-      
+
       const response = await fetch(`/api/contacts/${contact.id}/enrich-photo`, {
         method: 'POST',
         credentials: 'include',
@@ -126,12 +126,12 @@ export function AIPhotoReview({ contact, open, onOpenChange }: AIPhotoReviewProp
           metadata: suggestion.metadata
         })
       })
-      
+
       if (!response.ok) {
         const errorText = await response.text()
         throw new Error(`Failed to apply photo: ${response.status} ${errorText}`)
       }
-      
+
       return response.json() as unknown
     },
     onSuccess: () => {
@@ -154,7 +154,7 @@ export function AIPhotoReview({ contact, open, onOpenChange }: AIPhotoReviewProp
 
   const searchForPhotos = useCallback(async () => {
     if (!contact) return
-    
+
     setIsSearching(true)
     try {
       const response = await fetch(`/api/contacts/${contact.id}/photo-suggestions`, {
@@ -163,14 +163,14 @@ export function AIPhotoReview({ contact, open, onOpenChange }: AIPhotoReviewProp
           'Content-Type': 'application/json',
         },
       })
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch photo suggestions: ${response.status}`)
       }
-      
+
       const data = await response.json() as { suggestions: PhotoSuggestion[] }
       setSuggestions(data.suggestions)
-      
+
       if (data.suggestions.length === 0) {
         toast({
           title: 'No photos found',

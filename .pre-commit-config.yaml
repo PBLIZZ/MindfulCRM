@@ -109,7 +109,7 @@ repos:
               # Check if .env has keys not in .env.example
               env_keys=$(grep -v '^#\|^$' .env | cut -d= -f1 | sort)
               example_keys=$(grep -v '^#\|^$' .env.example | cut -d= -f1 | sort)
-              
+
               missing_keys=$(comm -23 <(echo "$env_keys") <(echo "$example_keys"))
               if [ -n "$missing_keys" ]; then
                 echo "Error: .env contains keys not in .env.example:"

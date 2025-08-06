@@ -3,7 +3,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { seedTestData } from '../../scripts/seed-test-data-2.js';
+import { seedTestData } from '../../scripts/seed-test-data.js';
 import { batchProcessCalendarEventsBrain } from '../brains/batch-process-calendar-events.brain.js';
 import { geminiService } from '../providers/gemini.provider.js';
 import { ChatBrain } from '../brains/chat.brain.js';

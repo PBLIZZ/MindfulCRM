@@ -25,12 +25,12 @@ tasksRouter.get('/', async (req: Request, res: Response) => {
     // Validate query parameters
     const queryResult = taskQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid query parameters', 
-        details: queryResult.error.errors 
+      return res.status(400).json({
+        error: 'Invalid query parameters',
+        details: queryResult.error.errors
       });
     }
-    
+
     const { status, project, owner: _owner } = queryResult.data;
     let tasks;
 
@@ -81,22 +81,22 @@ tasksRouter.post('/', async (req, res) => {
     if (!isAuthenticatedUser(req.user)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    
+
     // Validate request body
     const bodyResult = createTaskSchema.safeParse(req.body);
     if (!bodyResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid task data', 
-        details: bodyResult.error.errors 
+      return res.status(400).json({
+        error: 'Invalid task data',
+        details: bodyResult.error.errors
       });
     }
-    
+
     const { dueDate, ...taskData } = bodyResult.data;
     const processedTaskData = {
       ...taskData,
       dueDate: dueDate ? new Date(dueDate) : undefined
     };
-    
+
     const task = await taskService.createTask(req.user.id, processedTaskData);
     res.status(201).json(task);
   } catch (error: unknown) {
@@ -111,16 +111,16 @@ tasksRouter.post('/delegate-to-ai', async (req, res) => {
     if (!isAuthenticatedUser(req.user)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    
+
     // Validate request body
     const bodyResult = delegateTaskSchema.safeParse(req.body);
     if (!bodyResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid task delegation data', 
-        details: bodyResult.error.errors 
+      return res.status(400).json({
+        error: 'Invalid task delegation data',
+        details: bodyResult.error.errors
       });
     }
-    
+
     const { title, description, contactIds, priority, dueDate } = bodyResult.data;
     const task = await taskService.delegateTaskToAI(req.user.id, {
       title,
@@ -146,16 +146,16 @@ tasksRouter.post('/bulk-create', async (req, res) => {
     if (!isAuthenticatedUser(req.user)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    
+
     // Validate request body
     const bodyResult = bulkCreateTaskSchema.safeParse(req.body);
     if (!bodyResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid bulk task creation data', 
-        details: bodyResult.error.errors 
+      return res.status(400).json({
+        error: 'Invalid bulk task creation data',
+        details: bodyResult.error.errors
       });
     }
-    
+
     // Extract only the properties the service expects
     const { csvData: _csvData, fileName, mapping: _mapping } = bodyResult.data;
     const bulkTaskData = {
@@ -164,7 +164,7 @@ tasksRouter.post('/bulk-create', async (req, res) => {
       contactIds: [], // Will be populated from CSV processing
       owner: 'ai_assistant' as const
     };
-    
+
     const task = await taskService.bulkCreateTask(req.user.id, bulkTaskData);
     res.status(201).json({ success: true, task });
   } catch (error) {
@@ -179,22 +179,22 @@ tasksRouter.patch('/:id', async (req, res) => {
     if (!isAuthenticatedUser(req.user)) {
       return res.status(401).json({ error: 'User not authenticated' });
     }
-    
+
     // Validate request body
     const bodyResult = updateTaskSchema.safeParse(req.body);
     if (!bodyResult.success) {
-      return res.status(400).json({ 
-        error: 'Invalid task update data', 
-        details: bodyResult.error.errors 
+      return res.status(400).json({
+        error: 'Invalid task update data',
+        details: bodyResult.error.errors
       });
     }
-    
+
     const { dueDate, ...updates } = bodyResult.data;
     const processedUpdates = {
       ...updates,
       dueDate: dueDate ? new Date(dueDate) : undefined,
     };
-    
+
     const task = await taskService.updateTask(req.user.id, req.params.id, processedUpdates);
     res.json(task);
   } catch (error: unknown) {

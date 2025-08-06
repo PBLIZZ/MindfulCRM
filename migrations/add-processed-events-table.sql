@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS "processed_events" (
 );
 
 -- Add foreign key constraint to calendar_events
-ALTER TABLE "processed_events" ADD CONSTRAINT "processed_events_event_id_calendar_events_id_fk" 
+ALTER TABLE "processed_events" ADD CONSTRAINT "processed_events_event_id_calendar_events_id_fk"
 FOREIGN KEY ("event_id") REFERENCES "calendar_events"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
 
 -- Add indexes for better performance

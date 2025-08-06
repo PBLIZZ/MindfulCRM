@@ -45,11 +45,11 @@ export default function ContactCards() {
 
   const getStatusColor = (interaction: Interaction) => {
     if (!interaction.contact.lastContact) return "bg-gray-500";
-    
+
     const daysSinceContact = Math.floor(
       (Date.now() - new Date(interaction.contact.lastContact).getTime()) / (1000 * 60 * 60 * 24)
     );
-    
+
     if (daysSinceContact <= 1) return "bg-green-500";
     if (daysSinceContact <= 7) return "bg-yellow-500";
     return "bg-red-500";
@@ -57,11 +57,11 @@ export default function ContactCards() {
 
   const getStatusText = (interaction: Interaction) => {
     if (!interaction.contact.lastContact) return "No Contact";
-    
+
     const daysSinceContact = Math.floor(
       (Date.now() - new Date(interaction.contact.lastContact).getTime()) / (1000 * 60 * 60 * 24)
     );
-    
+
     if (daysSinceContact <= 1) return "Recent Contact";
     if (daysSinceContact <= 7) return "Follow Up Soon";
     return "Needs Attention";
@@ -84,7 +84,7 @@ export default function ContactCards() {
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="space-y-4">
           {recentInteractions && Array.isArray(recentInteractions) && recentInteractions.length > 0 ? (
             recentInteractions.slice(0, 3).map((interaction: Interaction) => (
@@ -130,11 +130,11 @@ export default function ContactCards() {
           )}
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardContent className="p-6">
           <h3 className="text-lg font-semibold mb-4">Client Progress Overview</h3>
-          
+
           <Tabs defaultValue="overview" className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -142,7 +142,7 @@ export default function ContactCards() {
               <TabsTrigger value="goals">Goals</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
             </TabsList>
-            
+
             <TabsContent value="overview" className="space-y-4 mt-6">
               {mockGoals.map((goal, index) => (
                 <div key={index}>
@@ -154,26 +154,26 @@ export default function ContactCards() {
                       {goal.current}/{goal.target} {goal.unit}
                     </span>
                   </div>
-                  <Progress 
-                    value={(goal.current / goal.target) * 100} 
+                  <Progress
+                    value={(goal.current / goal.target) * 100}
                     className="h-2"
                   />
                 </div>
               ))}
             </TabsContent>
-            
+
             <TabsContent value="timeline" className="mt-6">
               <div className="text-center py-8 text-muted-foreground">
                 Timeline view will show chronological client interactions
               </div>
             </TabsContent>
-            
+
             <TabsContent value="goals" className="mt-6">
               <div className="text-center py-8 text-muted-foreground">
                 Detailed goal tracking and management
               </div>
             </TabsContent>
-            
+
             <TabsContent value="documents" className="mt-6">
               <div className="text-center py-8 text-muted-foreground">
                 Client documents and session notes

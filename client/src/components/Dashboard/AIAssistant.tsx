@@ -49,20 +49,20 @@ export default function AIAssistant() {
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
-  
+
   // Fetch upcoming calendar events
   const { data: upcomingEvents, isLoading: eventsLoading, refetch: refetchEvents } = useQuery<CalendarEvent[]>({
     queryKey: ['/api/calendar/upcoming?limit=5'],
   });
-  
+
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   const { isListening, startListening, stopListening, transcript } = useVoiceInput();
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const response = await apiRequest("POST", "/api/ai/chat", { 
+      const response = await apiRequest("POST", "/api/ai/chat", {
         message,
         context: { userId: user?.id }
       });
@@ -170,7 +170,7 @@ export default function AIAssistant() {
             </div>
           </div>
         </CardHeader>
-        
+
         <CardContent>
           <div className="h-80 overflow-y-auto space-y-4 mb-4">
             {messages.map((message) => (
@@ -185,7 +185,7 @@ export default function AIAssistant() {
                     <Bot className="h-4 w-4 text-teal-600 dark:text-teal-300" />
                   </div>
                 )}
-                
+
                 <div
                   className={`rounded-lg p-3 max-w-xs ${
                     message.isUser
@@ -198,7 +198,7 @@ export default function AIAssistant() {
                     {formatDistanceToNow(message.timestamp, { addSuffix: true })}
                   </span>
                 </div>
-                
+
                 {message.isUser && (
                   <img
                     src={user?.picture ?? "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=32&h=32&fit=crop&crop=face"}
@@ -208,7 +208,7 @@ export default function AIAssistant() {
                 )}
               </div>
             ))}
-            
+
             {chatMutation.isPending && (
               <div className="flex items-start space-x-3">
                 <div className="w-8 h-8 bg-teal-100 dark:bg-teal-800 rounded-full flex items-center justify-center shrink-0">
@@ -223,10 +223,10 @@ export default function AIAssistant() {
                 </div>
               </div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </div>
-          
+
           <div className="flex space-x-2">
             <Input
               value={inputMessage}
@@ -254,7 +254,7 @@ export default function AIAssistant() {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Quick Actions */}
       <Card>
         <CardHeader>
@@ -280,7 +280,7 @@ export default function AIAssistant() {
           ))}
         </CardContent>
       </Card>
-      
+
       {/* Upcoming Sessions */}
       <Card>
         <CardHeader>
@@ -310,7 +310,7 @@ export default function AIAssistant() {
                 const startTime = new Date(event.startTime);
                 const endTime = event.endTime ? new Date(event.endTime) : null;
                 const attendees = event.attendees ?? [];
-                
+
                 return (
                   <div key={event.id} className="border rounded-lg p-3 space-y-2">
                     {/* Calendar and Title */}
@@ -325,13 +325,13 @@ export default function AIAssistant() {
                         )}
                       </div>
                       {event.calendarColor && (
-                        <div 
-                          className="w-3 h-3 rounded-full shrink-0" 
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
                           style={{ backgroundColor: event.calendarColor }}
                         />
                       )}
                     </div>
-                    
+
                     {/* Time */}
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
@@ -340,7 +340,7 @@ export default function AIAssistant() {
                         {endTime && ` - ${endTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
                       </span>
                     </div>
-                    
+
                     {/* Location */}
                     {event.location && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -348,14 +348,14 @@ export default function AIAssistant() {
                         <span className="break-words">{event.location}</span>
                       </div>
                     )}
-                    
+
                     {/* Description */}
                     {event.description && (
                       <div className="text-xs text-muted-foreground">
                         <p className="break-words line-clamp-2">{event.description}</p>
                       </div>
                     )}
-                    
+
                     {/* Attendees */}
                     {attendees.length > 0 && (
                       <div className="flex items-center gap-1 text-xs text-muted-foreground">

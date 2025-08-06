@@ -28,7 +28,7 @@ interface TagData {
 export default function Contacts() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  
+
   const [deleteContact, setDeleteContact] = useState<Contact | null>(null);
   const [editContact, setEditContact] = useState<Contact | null>(null);
   const [tagAction, setTagAction] = useState<{ type: 'add' | 'remove'; contactIds: string[] } | null>(null);
@@ -61,11 +61,11 @@ export default function Contacts() {
               'Content-Type': 'application/json',
             },
           });
-          
+
           if (!response.ok) {
             throw new Error(`Failed to enrich photo: ${response.status}`);
           }
-          
+
           successCount++;
         } catch {
           failureCount++;
@@ -164,7 +164,7 @@ export default function Contacts() {
           description: `Removed "${tag.name}" tag from ${contactIds.length} contact(s).`,
         });
         // Refresh contacts data
-        window.location.reload(); 
+        window.location.reload();
       } else {
         throw new Error('Failed to remove tag');
       }
@@ -324,8 +324,8 @@ export default function Contacts() {
             ← Back to Contacts
           </Button>
         </div>
-        <ContactDetail 
-          contactId={selectedContactId} 
+        <ContactDetail
+          contactId={selectedContactId}
           onEditContact={(contact) => {
             // Convert ContactWithDetails to Contact by extracting base properties
             const { interactions, goals, documents, ...baseContact } = contact;
@@ -414,8 +414,8 @@ export default function Contacts() {
             <TabsTrigger value='cards'>Card View</TabsTrigger>
           </TabsList>
           <TabsContent value='table'>
-            <ContactsTable 
-              contacts={allContacts} 
+            <ContactsTable
+              contacts={allContacts}
               onSelectContact={setSelectedContactId}
               onEditContact={setEditContact}
               onDeleteContact={setDeleteContact}
@@ -492,7 +492,7 @@ _onExportData={handleExportData}
       )}
 
       <AddContactDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
-      
+
       {/* Photo Upload Dialog */}
       {photoUploadContact && (
         <ContactPhotoUpload
@@ -503,7 +503,7 @@ _onExportData={handleExportData}
           onOpenChange={(open) => !open && setPhotoUploadContact(null)}
         />
       )}
-      
+
       {/* AI Photo Review Dialog */}
       {aiPhotoReviewContact && (
         <AIPhotoReview
@@ -512,21 +512,21 @@ _onExportData={handleExportData}
           onOpenChange={(open) => !open && setAiPhotoReviewContact(null)}
         />
       )}
-      
+
       {/* Delete Contact Dialog */}
       <DeleteContactDialog
         contact={deleteContact}
         open={!!deleteContact}
         onOpenChange={(open) => !open && setDeleteContact(null)}
       />
-      
+
       {/* Edit Contact Dialog */}
       <EditContactModal
         contact={editContact}
         open={!!editContact}
         onOpenChange={(open) => !open && setEditContact(null)}
       />
-      
+
       {/* Tag Selection Dialog */}
       <TagSelectionDialog
         open={!!tagAction}
@@ -549,7 +549,7 @@ onTagSelected={(tag) => {
         }}
         title={tagAction?.type === 'add' ? 'Add Tag to Contacts' : 'Remove Tag from Contacts'}
         description={
-          tagAction?.type === 'add' 
+          tagAction?.type === 'add'
             ? `Select a tag to add to ${tagAction?.contactIds.length ?? 0} selected contact(s).`
             : `Select a tag to remove from ${tagAction?.contactIds.length ?? 0} selected contact(s).`
         }

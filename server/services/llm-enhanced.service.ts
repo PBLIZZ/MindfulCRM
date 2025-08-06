@@ -73,7 +73,7 @@ export class EnhancedLLMService {
     // Initialize brain services for calendar processing
     this.filterBrain = new CalendarFilterBrain();
     this.extractBrain = new CalendarExtractBrain();
-    
+
     // Initialize OpenRouter client
     this.openRouterClient = new OpenAI({
       baseURL: 'https://openrouter.ai/api/v1',

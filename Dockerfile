@@ -31,4 +31,4 @@ COPY --from=builder /app/dist ./dist
 USER node
 EXPOSE 3000
 # The command to start the application
-CMD ["node", "dist/server/index.js"] 
+CMD ["node", "dist/server/index.js"]

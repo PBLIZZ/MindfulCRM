@@ -13,7 +13,7 @@ export const createContactSchema = z.object({
   notes: z.string().optional(),
   lifecycleStage: z.enum([
     'discovery',
-    'curious', 
+    'curious',
     'new_client',
     'core_client',
     'ambassador',
@@ -29,7 +29,7 @@ export const createContactSchema = z.object({
   socialMediaHandles: z.record(z.string()).optional(),
   profilePictureSource: z.enum([
     'linkedin',
-    'facebook', 
+    'facebook',
     'x',
     'instagram',
     'github',
@@ -53,7 +53,7 @@ export const contactQuerySchema = z.object({
   status: z.string().optional(),
   lifecycleStage: z.enum([
     'discovery',
-    'curious', 
+    'curious',
     'new_client',
     'core_client',
     'ambassador',

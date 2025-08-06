@@ -112,11 +112,11 @@ fi
 # Set up test database (if PostgreSQL is available)
 if command -v psql &> /dev/null && command -v createdb &> /dev/null; then
     print_status "Setting up test database..."
-    
+
     # Check if database exists
     if psql -lqt | cut -d \| -f 1 | grep -qw mindfulcrm_test; then
         print_warning "Test database 'mindfulcrm_test' already exists"
-        
+
         read -p "Do you want to recreate it? This will delete all test data. (y/N): " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
@@ -128,7 +128,7 @@ if command -v psql &> /dev/null && command -v createdb &> /dev/null; then
         createdb mindfulcrm_test
         print_success "Test database 'mindfulcrm_test' created"
     fi
-    
+
     # Run migrations
     print_status "Running database migrations..."
     DATABASE_URL=postgresql://localhost/mindfulcrm_test npm run db:push

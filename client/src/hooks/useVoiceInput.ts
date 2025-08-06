@@ -65,10 +65,10 @@ export function useVoiceInput(): UseVoiceInputReturn {
     if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
       const windowWithSpeech = window as WindowWithSpeechRecognition;
       const SpeechRecognition = windowWithSpeech.webkitSpeechRecognition ?? windowWithSpeech.SpeechRecognition;
-      
+
       if (SpeechRecognition) {
         const recognitionInstance = new SpeechRecognition();
-      
+
       recognitionInstance.continuous = false;
       recognitionInstance.interimResults = true;
       recognitionInstance.lang = "en-US";

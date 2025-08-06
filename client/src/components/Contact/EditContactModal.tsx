@@ -14,10 +14,10 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog.js'
-import { 
-  Upload, 
-  X, 
-   
+import {
+  Upload,
+  X,
+
   Loader2,
   Plus
 } from 'lucide-react'
@@ -57,12 +57,12 @@ const convertToWebP = (file: File): Promise<File> => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
     const img = new Image()
-    
+
     img.onload = () => {
       // Calculate dimensions to maintain aspect ratio
       const maxSize = 400
       let { width, height } = img
-      
+
       if (width > height) {
         if (width > maxSize) {
           height = (height * maxSize) / width
@@ -74,13 +74,13 @@ const convertToWebP = (file: File): Promise<File> => {
           height = maxSize
         }
       }
-      
+
       canvas.width = width
       canvas.height = height
-      
+
       // Draw and convert to WebP
       ctx?.drawImage(img, 0, 0, width, height)
-      
+
       canvas.toBlob(
         (blob) => {
           if (blob && blob.size <= 250 * 1024) { // 250KB limit
@@ -112,7 +112,7 @@ const convertToWebP = (file: File): Promise<File> => {
         0.9
       )
     }
-    
+
     img.onerror = () => reject(new Error('Failed to load image'))
     img.src = URL.createObjectURL(file)
   })
@@ -135,7 +135,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
     lifecycleStage: 'discovery',
     tags: []
   })
-  
+
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>('')
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -164,15 +164,15 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
   const updateContactMutation = useMutation({
     mutationFn: async (data: ContactUpdateData & { imageFile?: File }): Promise<ContactUpdateResponse> => {
       if (!contact) throw new Error('No contact selected')
-      
+
       let avatarUrl = contact.avatarUrl
-      
+
       // Upload image if provided
       if (data.imageFile) {
         const formData = new FormData()
         formData.append('image', data.imageFile)
         formData.append('contactId', contact.id)
-        
+
         const imageResponse = await fetch('/api/contacts/upload-photo', {
           method: 'POST',
           headers: {
@@ -180,19 +180,19 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
           },
           body: formData,
         })
-        
+
         if (!imageResponse.ok) {
           throw new Error('Failed to upload image')
         }
-        
+
         const imageResult = await imageResponse.json() as ImageUploadResponse
         avatarUrl = imageResult.avatarUrl
       }
-      
+
       // Update contact data
       const updateData = { ...data, avatarUrl }
       delete updateData.imageFile
-      
+
       const response = await fetch(`/api/contacts/${contact.id}`, {
         method: 'PATCH',
         headers: {
@@ -201,11 +201,11 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
         },
         body: JSON.stringify(updateData),
       })
-      
+
       if (!response.ok) {
         throw new Error('Failed to update contact')
       }
-      
+
       return await response.json() as ContactUpdateResponse
     },
     onSuccess: () => {
@@ -251,12 +251,12 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
     }
 
     setUploadingImage(true)
-    
+
     try {
       const webpFile = await convertToWebP(file)
       setImageFile(webpFile)
       setImagePreview(URL.createObjectURL(webpFile))
-      
+
       toast({
         title: 'Image processed',
         description: `Image converted to WebP format (${Math.round(webpFile.size / 1024)}KB)`,
@@ -301,13 +301,13 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
 
   const addTag = () => {
     if (!newTagName.trim()) return
-    
+
     const newTag = {
       id: `temp_${Date.now()}`,
       name: newTagName.trim(),
       color: '#3b82f6' // Default blue color
     }
-    
+
     setFormData(prev => ({
       ...prev,
       tags: [...(prev.tags ?? []), newTag]
@@ -324,7 +324,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault()
-    
+
     if (!formData.name.trim()) {
       toast({
         title: 'Name required',
@@ -333,7 +333,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
       })
       return
     }
-    
+
     updateContactMutation.mutate({
       ...formData,
                   imageFile: imageFile ?? undefined
@@ -348,7 +348,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
         <DialogHeader>
           <DialogTitle>Edit Contact</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Image Upload Section */}
           <div className="space-y-4">
@@ -360,7 +360,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
                   {getInitials(formData.name)}
                 </AvatarFallback>
               </Avatar>
-              
+
               <div className="flex-1">
                 <div
                   className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
@@ -385,7 +385,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
                     </div>
                   )}
                 </div>
-                
+
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -393,7 +393,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
                   onChange={handleFileInput}
                   className="hidden"
                 />
-                
+
                 {(imagePreview || imageFile) && (
                   <Button
                     type="button"
@@ -422,7 +422,7 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -445,13 +445,13 @@ export function EditContactModal({ contact, open, onOpenChange }: EditContactMod
                 placeholder="+1 (555) 123-4567"
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="lifecycleStage">Lifecycle Stage</Label>
               <Select
                 value={formData.lifecycleStage}
-                onValueChange={(value) => setFormData(prev => ({ 
-                  ...prev, 
+                onValueChange={(value) => setFormData(prev => ({
+                  ...prev,
                   lifecycleStage: value as Contact['lifecycleStage']
                 }))}
               >

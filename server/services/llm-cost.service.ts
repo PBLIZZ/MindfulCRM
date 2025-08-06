@@ -1,6 +1,6 @@
 /**
  * LLM Cost Tracking Service
- * 
+ *
  * Centralized service for tracking LLM usage, costs, and daily limits.
  * Implements the LLMCostTracking interface from service-contracts.ts
  */
@@ -25,17 +25,17 @@ export class LLMCostService implements LLMCostTracking {
   trackUsage(userId: string, tokens: number, model: string): void {
     const today = new Date().toISOString().split('T')[0];
     const key = `${userId}:${today}`;
-    
+
     const costPerToken = this.getCostPerToken(model);
     const cost = tokens * costPerToken;
-    
+
     const current = this.dailyUsage.get(key) ?? { requests: 0, tokens: 0, cost: 0 };
     current.requests++;
     current.tokens += tokens;
     current.cost += cost;
-    
+
     this.dailyUsage.set(key, current);
-    
+
     // Log warning if daily cost exceeds threshold
     if (current.cost > this.DAILY_COST_LIMIT) {
       console.warn(`⚠️ User ${userId} has exceeded daily LLM cost limit: $${current.cost.toFixed(2)}`);
@@ -81,12 +81,12 @@ export class LLMCostService implements LLMCostTracking {
    */
   getAllUsageStats(): Array<{ userId: string; date: string; stats: LLMUsageStats }> {
     const results: Array<{ userId: string; date: string; stats: LLMUsageStats }> = [];
-    
+
     for (const [key, stats] of this.dailyUsage.entries()) {
       const [userId, date] = key.split(':');
       results.push({ userId, date, stats });
     }
-    
+
     return results.sort((a, b) => b.date.localeCompare(a.date));
   }
 

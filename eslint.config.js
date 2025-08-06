@@ -14,19 +14,19 @@ export default [
       'npm-debug.log*',
       'yarn-debug.log*',
       'yarn-error.log*',
-      
+
       // Build outputs
       'dist/**',
       'build/**',
       'out/**',
       '.next/**',
       '.nuxt/**',
-      
+
       // Cache directories
       '.cache/**',
       '.eslintcache',
       '.parcel-cache/**',
-      
+
       // Coverage and test outputs
       'coverage/**',
       '.nyc_output/**',
@@ -35,7 +35,7 @@ export default [
       '**/*.test.ts',
       '**/*.test.tsx',
       'tests/**',
-      
+
       // Environment and config files
       '.env*',
       'vite.config.ts',
@@ -45,33 +45,33 @@ export default [
       'eslint.config.js',
       '*.config.js',
       '*.config.ts',
-      
+
       // Documentation and scripts
       'docs/**',
       'scripts/**',
       'migrations/**',
-      
+
       // Generated and UI files
       'client/src/hooks/use-toast.ts',
       'client/src/components/ui/**',
       'server/migrate-*.js',
       'server/test-*.ts',
       'server/tests/**',
-      
+
       // Minified files
       '**/*.min.js',
       '**/*.min.css',
-      
+
       // Generated files
       'generated/**',
       'auto-generated/**',
-      
+
       // Vendor directories
       'vendor/**',
-      
+
       // Archive files
       '**/*.archive.*',
-      
+
       // Backup files
       '**/*.bak',
       '**/*.backup',

@@ -44,17 +44,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       // Get CSRF token first
       const csrfResponse = await fetch("/auth/csrf-token", { credentials: "include" });
       const { csrfToken } = await csrfResponse.json() as { csrfToken: string };
-      
+
       // Make logout request with CSRF token
-      await fetch("/auth/logout", { 
-        method: "POST", 
+      await fetch("/auth/logout", {
+        method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": csrfToken,
         },
       });
-      
+
       // Server clears the auth cookie, just redirect
       window.location.href = "/login";
     } catch {

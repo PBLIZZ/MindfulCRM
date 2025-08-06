@@ -32,15 +32,15 @@ export default {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
   testTimeout: 30000,
   maxWorkers: '50%',
-  
+
   // Test environment configuration
   testEnvironmentOptions: {
     NODE_ENV: 'test'
   },
-  
+
   // Module resolution for ESM
   resolver: '<rootDir>/tests/jest-resolver.js',
-  
+
   // Coverage thresholds - progressive increases toward 80-90%
   coverageThreshold: {
     global: {
@@ -77,7 +77,7 @@ export default {
       statements: 70
     }
   },
-  
+
   // Test categorization for phased approach
   testMatch: [
     '**/__tests__/**/*.test.ts',
@@ -88,7 +88,7 @@ export default {
     '**/tests/integration/**/*.test.tsx',
     '**/tests/performance/**/*.test.ts'
   ],
-  
+
   // Exclude e2e tests from Jest (use Playwright)
   testPathIgnorePatterns: [
     '/node_modules/',

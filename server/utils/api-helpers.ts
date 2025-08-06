@@ -1,6 +1,6 @@
 /**
  * API Helper Functions
- * 
+ *
  * Contains utilities for handling API responses and data transformation
  * according to the MindfulCRM Data Doctrine.
  */

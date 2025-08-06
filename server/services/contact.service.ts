@@ -1,7 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import sharp from 'sharp';
-import type { Express } from 'express';
 /// <reference types="multer" />
 import { storage } from '../data/index.js';
 import {

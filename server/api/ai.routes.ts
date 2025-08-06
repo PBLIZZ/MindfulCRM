@@ -130,7 +130,7 @@ aiRouter.post(
 
       // Apply the photo suggestion by downloading and saving it
       const result = await aiService.downloadAndSaveContactPhoto(contactId, photoUrl, source);
-      
+
       if (result.success) {
         res.json(nullsToUndefined(sanitizeResponse({
           success: true,
@@ -139,7 +139,7 @@ aiRouter.post(
         })));
         return;
       } else {
-        res.status(400).json({ 
+        res.status(400).json({
           error: result.error ?? 'Failed to apply photo suggestion'
         });
         return;
@@ -290,7 +290,7 @@ aiRouter.post('/rate-limit/recommend', async (req: Request, res: Response): Prom
 });
 
 // --- Enhanced LLM Performance & Cost Management ---
-aiRouter.get('/llm/performance-metrics', async (req: Request, res: Response): Promise<void> => {
+aiRouter.get('/llm/performance-metrics', async (_req: Request, res: Response): Promise<void> => {
   try {
     const metrics = enhancedLLMService.getMetrics();
     res.json(sanitizeResponse(metrics));
@@ -349,7 +349,7 @@ aiRouter.post(
   }
 );
 
-aiRouter.get('/llm/concurrency-stats', async (req: Request, res: Response): Promise<void> => {
+aiRouter.get('/llm/concurrency-stats', async (_req: Request, res: Response): Promise<void> => {
   try {
     const stats = llmConcurrencyController.getStats();
     res.json(sanitizeResponse(stats));
@@ -382,7 +382,7 @@ aiRouter.post(
   }
 );
 
-aiRouter.get('/llm/system-stats', async (req: Request, res: Response): Promise<void> => {
+aiRouter.get('/llm/system-stats', async (_req: Request, res: Response): Promise<void> => {
   try {
     const systemStats = llmCostTracker.getSystemStats();
     res.json(sanitizeResponse(systemStats));
@@ -393,7 +393,7 @@ aiRouter.get('/llm/system-stats', async (req: Request, res: Response): Promise<v
 });
 
 // Health check endpoint for LLM services
-aiRouter.get('/llm/health', async (req: Request, res: Response): Promise<void> => {
+aiRouter.get('/llm/health', async (_req: Request, res: Response): Promise<void> => {
   try {
     const concurrencyStats = llmConcurrencyController.getStats();
     const isHealthy = concurrencyStats.failed < concurrencyStats.completed * 0.1; // Less than 10% failure rate

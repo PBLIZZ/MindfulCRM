@@ -20,10 +20,10 @@ export class ChatBrain {
       ? sanitizeForLLM(JSON.stringify(rawContext, null, 2))
       : 'No specific context provided';
 
-    const systemPrompt = `You are an AI assistant for a wellness solopreneur's client relationship management system. 
-      You help analyze client data, provide insights, and suggest next steps for client care. 
+    const systemPrompt = `You are an AI assistant for a wellness solopreneur's client relationship management system.
+      You help analyze client data, provide insights, and suggest next steps for client care.
       Be professional, empathetic, and focused on wellness outcomes.
-      
+
       Current context: ${sanitizedContext}`;
 
     return [

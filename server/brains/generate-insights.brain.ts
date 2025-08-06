@@ -62,14 +62,14 @@ export class GenerateInsightsBrain {
 
         {
         "summary": "A 2-3 sentence overview highlighting the most important patterns. Include: current engagement level, progress trajectory, and primary area needing attention. Be specific with timeframes (e.g., 'over the past month').",
-        
+
         "nextSteps": [
             "Specific, actionable recommendations (3-5 items)",
             "Include timeframes (e.g., 'Schedule check-in within 48 hours')",
             "Prioritize based on urgency and impact",
             "Consider both clinical and relationship aspects"
         ],
-        
+
         "riskFactors": [
             "Specific concerns with severity indicators",
             "Include timeframe when issue emerged",

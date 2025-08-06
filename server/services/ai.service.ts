@@ -125,8 +125,8 @@ export class AiService {
   }
 
   async downloadAndSaveContactPhoto(
-    contactId: string, 
-    photoUrl: string, 
+    contactId: string,
+    photoUrl: string,
     source: string
   ): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
     return photoEnrichmentService.downloadAndSavePhoto(contactId, photoUrl, source);

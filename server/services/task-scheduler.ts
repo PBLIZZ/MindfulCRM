@@ -96,7 +96,7 @@ export class TaskScheduler {
     try {
       // Get all active users to check for AI tasks
       const users = await this.getAllActiveUsers();
-      
+
       for (const user of users) {
         // Process tasks assigned to AI that are in progress
         const aiTasks = await storage.tasks.getTasksByUserId(user.id, ['in_progress']);
@@ -303,24 +303,24 @@ export class TaskScheduler {
 
       // Get all users to clean up their old suggestions
       const users = await storage.users.getAll();
-      
+
       for (const user of users) {
         // Get old completed/rejected suggestions for cleanup
         const oldSuggestions = await storage.ai.getSuggestionsByUserId(user.id);
         const oldCompletedSuggestions = oldSuggestions.filter(
-          suggestion => 
+          suggestion =>
             (suggestion.status === 'completed' || suggestion.status === 'rejected') &&
             new Date(suggestion.createdAt) < thirtyDaysAgo
         );
-        
+
         // Get old completed/failed jobs for cleanup
         const oldJobs = await storage.ai.getJobsByUserId(user.id);
         const oldCompletedJobs = oldJobs.filter(
-          job => 
+          job =>
             (job.status === 'completed' || job.status === 'failed') &&
             new Date(job.createdAt) < thirtyDaysAgo
         );
-        
+
         console.log(`Cleanup: Found ${oldCompletedSuggestions.length} old suggestions and ${oldCompletedJobs.length} old jobs for user ${user.email}`);
         // Note: Actual deletion would require additional methods in the data layer
       }

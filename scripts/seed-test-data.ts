@@ -61,7 +61,7 @@ const testContacts = [
 ];
 
 // Realistic calendar events that would come from Google Calendar sync
-const getCalendarEvents = (userId: string, contactIds: string[]) => [
+const getCalendarEvents = (userId: string, _contactIds: string[]) => [
   {
     userId,
     googleEventId: 'event_001_' + Date.now(),

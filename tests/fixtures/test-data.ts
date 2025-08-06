@@ -2,8 +2,8 @@
  * Test fixtures providing consistent test data across all test suites
  */
 
-import type { 
-  Contact, 
+import type {
+  Contact,
   InsertContact,
   User,
   Tag,

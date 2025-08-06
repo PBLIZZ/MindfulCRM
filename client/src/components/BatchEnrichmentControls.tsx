@@ -17,9 +17,9 @@ interface BatchEnrichmentControlsProps {
   startBatchEnrichment: () => Promise<BatchEnrichmentResult>;
 }
 
-const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({ 
-  stats, 
-  startBatchEnrichment 
+const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({
+  stats,
+  startBatchEnrichment
 }) => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -41,7 +41,7 @@ const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({
     try {
       // Start with contacts that don't have photos
       const contactsToEnrich = stats.contactsWithoutPhotos ?? [];
-      
+
       if (contactsToEnrich.length === 0) {
         // Alert: No contacts need photo enrichment
         setIsProcessing(false);
@@ -82,7 +82,7 @@ const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({
       </div>
 
       <div className="space-y-3">
-        <button 
+        <button
           onClick={handleStartBatch}
           disabled={isProcessing || contactsNeedingPhotos === 0}
           className={`w-full py-2 px-4 rounded font-medium ${
@@ -96,8 +96,8 @@ const BatchEnrichmentControls: React.FC<BatchEnrichmentControlsProps> = ({
 
         {isProcessing && (
           <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
               style={{ width: `${progress}%` }}
             ></div>
             <div className="text-center text-sm mt-1">{progress}%</div>
