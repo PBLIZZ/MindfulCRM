@@ -1,0 +1,14 @@
+# docker-compose.yml
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    # Pass the .env.local file to the container for environment variables
+    env_file:
+      - .env.local
+    # We mount the source code for hot-reloading in dev
+    volumes:
+      - .:/app
+      - /app/node_modules # Anonymous volume to prevent local node_modules from overwriting container's
+    # We don't need a DB service here yet, as we will connect to Supabase

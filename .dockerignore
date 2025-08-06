@@ -1,0 +1,11 @@
+# .dockerignore
+
+.git
+.DS_Store
+node_modules
+/client/node_modules
+npm-debug.log
+.env
+.env.local
+dist
+/client/dist

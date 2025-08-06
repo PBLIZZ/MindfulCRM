@@ -9,27 +9,72 @@ export default [
   // Global ignores
   {
     ignores: [
+      // Dependencies
       'node_modules/**',
+      'npm-debug.log*',
+      'yarn-debug.log*',
+      'yarn-error.log*',
+      
+      // Build outputs
       'dist/**',
       'build/**',
+      'out/**',
+      '.next/**',
+      '.nuxt/**',
+      
+      // Cache directories
+      '.cache/**',
+      '.eslintcache',
+      '.parcel-cache/**',
+      
+      // Coverage and test outputs
+      'coverage/**',
+      '.nyc_output/**',
+      'test-results/**',
+      'playwright-report/**',
       '**/*.test.ts',
       '**/*.test.tsx',
+      'tests/**',
+      
+      // Environment and config files
+      '.env*',
       'vite.config.ts',
       'postcss.config.js',
       'tailwind.config.js',
-      'docs/**',
-      'scripts/**',
-      'client/src/hooks/use-toast.ts',
-      'migrations/**',
-      'docs/temp/**',
       'drizzle.config.ts',
       'eslint.config.js',
       '*.config.js',
       '*.config.ts',
+      
+      // Documentation and scripts
+      'docs/**',
+      'scripts/**',
+      'migrations/**',
+      
+      // Generated and UI files
+      'client/src/hooks/use-toast.ts',
+      'client/src/components/ui/**',
       'server/migrate-*.js',
       'server/test-*.ts',
       'server/tests/**',
-      'client/src/components/ui/**',
+      
+      // Minified files
+      '**/*.min.js',
+      '**/*.min.css',
+      
+      // Generated files
+      'generated/**',
+      'auto-generated/**',
+      
+      // Vendor directories
+      'vendor/**',
+      
+      // Archive files
+      '**/*.archive.*',
+      
+      // Backup files
+      '**/*.bak',
+      '**/*.backup',
     ],
   },
   // Main configuration for all files

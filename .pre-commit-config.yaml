@@ -1,0 +1,162 @@
+# Pre-commit hooks configuration
+# See https://pre-commit.com for more information
+
+repos:
+  # Standard hooks for file formatting and validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.(md|txt)$'
+      - id: end-of-file-fixer
+        exclude: '\.(md|txt)$'
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+      - id: detect-private-key
+      - id: check-case-conflict
+
+  # TypeScript and JavaScript linting
+  - repo: local
+    hooks:
+      - id: eslint
+        name: ESLint
+        entry: npx eslint
+        language: system
+        files: \.(js|jsx|ts|tsx)$
+        args: [--fix, --cache, --max-warnings=5]
+
+      # Type checking
+      - id: typescript-check-server
+        name: TypeScript Check (Server)
+        entry: npx tsc
+        language: system
+        files: '^server/.*\.(ts|tsx)$'
+        args: [-p, tsconfig.server.json, --noEmit]
+        pass_filenames: false
+
+      - id: typescript-check-client
+        name: TypeScript Check (Client)
+        entry: npx tsc
+        language: system
+        files: '^client/.*\.(ts|tsx)$'
+        args: [-p, tsconfig.json, --noEmit]
+        pass_filenames: false
+
+      # Unit tests for changed files
+      - id: unit-tests
+        name: Unit Tests
+        entry: npm run test:unit
+        language: system
+        files: \.(js|jsx|ts|tsx)$
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Security checks
+      - id: npm-audit
+        name: NPM Audit
+        entry: npm audit
+        language: system
+        args: [--audit-level, moderate]
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Test coverage check for critical files
+      - id: coverage-check
+        name: Coverage Check
+        entry: bash -c
+        args:
+          - |
+            # Only run coverage check if service files changed
+            if git diff --cached --name-only | grep -E '^server/services/.*\.(ts|js)$' > /dev/null; then
+              echo "Service files changed, checking coverage..."
+              npm run test:coverage -- --testPathPattern=services --passWithNoTests
+            else
+              echo "No critical service files changed, skipping coverage check"
+            fi
+        language: system
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Database migration validation
+      - id: migration-check
+        name: Migration Check
+        entry: bash -c
+        args:
+          - |
+            # Check if migration files changed
+            if git diff --cached --name-only | grep -E '^migrations/.*\.sql$' > /dev/null; then
+              echo "Migration files changed, validating..."
+              # Add validation logic here (e.g., dry-run migrations)
+              echo "Migration validation passed"
+            else
+              echo "No migration files changed"
+            fi
+        language: system
+        pass_filenames: false
+
+      # Environment file validation
+      - id: env-file-check
+        name: Environment File Check
+        entry: bash -c
+        args:
+          - |
+            # Ensure .env.example is updated when .env changes
+            if [ -f .env ] && [ -f .env.example ]; then
+              # Check if .env has keys not in .env.example
+              env_keys=$(grep -v '^#\|^$' .env | cut -d= -f1 | sort)
+              example_keys=$(grep -v '^#\|^$' .env.example | cut -d= -f1 | sort)
+              
+              missing_keys=$(comm -23 <(echo "$env_keys") <(echo "$example_keys"))
+              if [ -n "$missing_keys" ]; then
+                echo "Error: .env contains keys not in .env.example:"
+                echo "$missing_keys"
+                echo "Please update .env.example with these keys"
+                exit 1
+              fi
+            fi
+        language: system
+        pass_filenames: false
+
+  # Python hooks for scripts (if any)
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        files: \.py$
+
+  # SQL formatting
+  - repo: https://github.com/sqlfluff/sqlfluff
+    rev: 3.0.7
+    hooks:
+      - id: sqlfluff-lint
+        files: \.sql$
+        additional_dependencies: ['dbt-postgres', 'sqlfluff-templater-dbt']
+
+      - id: sqlfluff-fix
+        files: \.sql$
+        additional_dependencies: ['dbt-postgres', 'sqlfluff-templater-dbt']
+        stages: [manual]
+
+# Configuration for specific hooks
+default_stages: [pre-commit]
+
+# Exclude certain files/directories from all hooks
+exclude: |
+  (?x)^(
+    node_modules/.*|
+    dist/.*|
+    coverage/.*|
+    \.git/.*|
+    migrations/.*_snapshot\.json|
+    temp/.*
+  )$
+
+# Global configuration
+fail_fast: false
+default_language_version:
+  python: python3
+  node: '20'

@@ -20,16 +20,6 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/results.xml' }]
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:5173',
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
-    /* Take screenshot on failure */
-    screenshot: 'only-on-failure',
-    /* Record video on failure */
-    video: 'retain-on-failure',
-  },
 
   /* Configure projects for major browsers */
   projects: [
@@ -78,6 +68,20 @@ export default defineConfig({
   /* Global setup and teardown */
   globalSetup: require.resolve('./tests/e2e/global-setup.ts'),
   globalTeardown: require.resolve('./tests/e2e/global-teardown.ts'),
+  
+  /* Use authentication state */
+  use: {
+    /* Base URL to use in actions like `await page.goto('/')`. */
+    baseURL: 'http://localhost:5173',
+    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
+    trace: 'on-first-retry',
+    /* Take screenshot on failure */
+    screenshot: 'only-on-failure',
+    /* Record video on failure */
+    video: 'retain-on-failure',
+    /* Use saved authentication state */
+    storageState: 'tests/e2e/auth-state.json'
+  },
   
   /* Test timeout */
   timeout: 30 * 1000,
